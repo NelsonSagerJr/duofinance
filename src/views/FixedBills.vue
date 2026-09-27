@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { state, memberName, listFixedBills, listExpenses, deleteFixedBill, markBillPaid, deleteExpense } from '../lib/store.js'
+import { state, paidByLabel, SPLIT_AT_TILL, listFixedBills, listExpenses, deleteFixedBill, markBillPaid, deleteExpense } from '../lib/store.js'
 import { formatBRL, plural } from '../lib/money.js'
-import { categoryById } from '../lib/categories.js'
+import { categoryById, chipClass } from '../lib/categories.js'
 import { monthRange, monthLabel, dueDate, todayISO } from '../lib/month.js'
 import Modal from '../components/FixedBills/Modal.vue'
 import BillForm from '../components/FixedBills/BillForm.vue'
@@ -77,10 +77,11 @@ async function run(id, fn) {
   }
 }
 
-function pay(member) {
+// paidBy = member id, or null for "Dividido na hora"
+function pay(paidBy) {
   const bill = paying.value
   paying.value = null
-  run(bill.id, () => markBillPaid(bill, state.month, member.user_id))
+  run(bill.id, () => markBillPaid(bill, state.month, paidBy))
 }
 
 function undo(r) {
@@ -174,12 +175,12 @@ const iconBtn = 'w-9 h-9 flex items-center justify-center rounded-lg hover:bg-su
             :class="{ 'opacity-60': !r.bill.active && !r.payment }">
             <!-- Name / category -->
             <div class="flex items-center gap-3 min-w-0 flex-1 basis-full md:basis-auto">
-              <div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
-                <span class="material-symbols-outlined text-[20px]">{{ categoryById(r.bill.category).icon }}</span>
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" :class="chipClass(categoryById(r.bill.category_id))">
+                <span class="material-symbols-outlined text-[20px]">{{ categoryById(r.bill.category_id).icon }}</span>
               </div>
               <div class="flex flex-col min-w-0">
                 <span class="font-semibold text-body-md text-on-surface truncate">{{ r.bill.name }}</span>
-                <span class="font-body-sm text-body-sm text-on-surface-variant truncate">{{ categoryById(r.bill.category).label }}</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant truncate">{{ categoryById(r.bill.category_id).name }}</span>
               </div>
               <span class="ml-auto md:hidden font-semibold text-body-lg text-on-surface whitespace-nowrap">{{ formatBRL(r.bill.amount_cents) }}</span>
             </div>
@@ -191,7 +192,7 @@ const iconBtn = 'w-9 h-9 flex items-center justify-center rounded-lg hover:bg-su
                 Todo dia {{ r.bill.due_day }}
               </span>
               <span class="font-body-sm text-body-sm text-on-surface-variant">
-                <template v-if="r.payment">Pago por {{ memberName(r.payment.paid_by) }}</template>
+                <template v-if="r.payment">{{ r.payment.paid_by ? `Pago por ${paidByLabel(r.payment.paid_by)}` : SPLIT_AT_TILL }}</template>
                 <template v-else>Vence {{ shortDate(r.due) }}</template>
               </span>
             </div>
@@ -237,11 +238,15 @@ const iconBtn = 'w-9 h-9 flex items-center justify-center rounded-lg hover:bg-su
 
     <Modal v-if="paying" title="Quem pagou?" @close="paying = null">
       <p class="text-body-md text-on-surface-variant">{{ paying.name }} · {{ formatBRL(paying.amount_cents) }} · {{ monthLabel(state.month) }}</p>
-      <div class="flex gap-space-sm">
+      <div class="grid grid-cols-2 gap-space-sm">
         <button v-for="m in state.members" :key="m.user_id" type="button"
-          class="flex-1 min-w-0 truncate px-3 py-3 rounded-lg bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container text-on-surface font-label-lg text-label-lg transition-colors"
-          @click="pay(m)">{{ m.name }}</button>
+          class="min-w-0 truncate px-3 py-3 rounded-lg bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container text-on-surface font-label-lg text-label-lg transition-colors"
+          @click="pay(m.user_id)">{{ m.name }}</button>
+        <button type="button"
+          class="col-span-2 inline-flex items-center justify-center gap-2 min-w-0 px-3 py-3 rounded-lg bg-surface-container-low hover:bg-primary-container hover:text-on-primary-container text-on-surface font-label-lg text-label-lg transition-colors"
+          @click="pay(null)"><span class="material-symbols-outlined text-[18px]">call_split</span>{{ SPLIT_AT_TILL }}</button>
       </div>
+      <p class="text-body-sm text-on-surface-variant">{{ SPLIT_AT_TILL }}: cada um pagou a própria parte. Entra no total da casa sem mexer no acerto.</p>
     </Modal>
   </div>
 </template>

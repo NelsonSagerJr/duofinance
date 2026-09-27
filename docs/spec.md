@@ -9,7 +9,7 @@ Site para um casal controlar gastos pessoais, contas da casa e acerto entre os d
 - **Banco/Auth:** Supabase (Postgres). Login por e-mail + senha. Cadastro público desligado no painel; os dois usuários são criados manualmente.
 - **Dinheiro:** sempre inteiro em centavos (`amount_cents`). Formatação `Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'})`.
 - **Idioma:** pt-BR. Tema claro e escuro (sistema/claro/escuro, `src/lib/theme.js`; tokens em `src/style.css`). Responsivo: sidebar no desktop, bottom nav no celular.
-- **Categorias:** lista fixa no código (Alimentação, Moradia, Contas, Saúde, Transporte, Lazer, Pets, Compras, Outros).
+- **Categorias:** tabela `categories` da casa (ver "Categorias personalizáveis"); a lista fixa antiga virou o seed de cada casa.
 - **Nomes das pessoas** vêm do banco (`members.name`), nunca hardcoded.
 
 ## Modelo de dados
@@ -54,3 +54,49 @@ Fora do escopo: notificações, PDF, Pix, fotos, dicas, "reunião do casal", mú
 2. Desligar signups; criar os 2 usuários em Auth.
 3. Rodar `supabase/seed.sql` ajustando e-mails/nomes (cria household + members).
 4. No GitHub: Settings → Pages → Source: GitHub Actions; Settings → Variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+
+## Fase 2 — "Dividido na hora" e finanças pessoais
+
+### Dividido na hora (despesas da casa)
+- `expenses.paid_by` passa a aceitar `null` **somente** em `scope='house'`: significa que cada um pagou a própria parte no caixa. UI: 3ª opção em "Quem pagou?" → **Dividido na hora** (também em "Marcar como paga" de conta fixa).
+- Acerto: para essas despesas, cada membro `paid += due` (saldo 0). Continua no total da casa e na tabela de despesas ("Dividido na hora" na coluna quem pagou).
+
+### Meu Espaço (privado por usuário)
+Tudo aqui tem RLS `user_id = auth.uid()` (sem acesso do parceiro, nem totais). Abas: **Resumo · Entradas · Gastos · Investimentos · Orçamento**.
+
+Tabelas novas (todas com `user_id → auth.users`, `household_id` não necessário):
+- `recurring_incomes(id, user_id, name, amount_cents, day 1..31, category, active)` — renda fixa; "Marcar como recebida" cria uma `income` com `recurring_income_id` + `income_month` (unique por mês).
+- `incomes(id, user_id, description, amount_cents > 0, received_on date, category, recurring_income_id nullable, income_month nullable)`. Categorias de entrada fixas no código: Salário, Freela, Bônus, Rendimentos, Vendas, Outros.
+- `investments(id, user_id, name, kind, archived bool)` — kind: Renda fixa, Ações, FIIs, Cripto, Previdência, Outros.
+- `investment_moves(id, user_id, investment_id, type 'deposit'|'withdraw'|'balance', amount_cents >= 0, moved_on date)` — `balance` = saldo informado naquela data. Saldo atual = último `balance` + aportes − resgates posteriores a ele (sem `balance`: aportes − resgates). Rendimento = saldo atual − (aportes − resgates), e % sobre o aportado líquido.
+- `budgets(user_id, category, limit_cents > 0, primary key (user_id, category))` — limite mensal por categoria de gasto.
+
+Métricas do mês (funções puras em `src/lib/personal.js`, com teste):
+- **Entradas** = soma de `incomes` do mês.
+- **Saídas** = gastos pessoais do mês + **minha parte da casa** (`round(amount * share_pct[me] / 100)` de cada despesa da casa do mês, com a mesma regra de arredondamento do acerto).
+- **Sobra** = entradas − saídas; **taxa de poupança** = sobra / entradas.
+- **Investido no mês** = aportes − resgates do mês; **patrimônio** = soma dos saldos atuais.
+- **Orçamento**: por categoria, gasto (pessoal + parte da casa) vs limite.
+
+Resumo: KPIs acima + gráficos em SVG próprio (sem lib): entradas × saídas dos últimos 12 meses com linha de sobra; gastos por categoria vs limite; evolução do patrimônio (12 meses).
+
+Detalhes da implementação (Fase 2):
+- Arredondamento de "Dividido na hora": sem pagador, a diferença de centavo fica com o primeiro membro (ordem alfabética), para as partes somarem o valor (`dueByMember` em `src/lib/settlement.js`).
+- Saldo, patrimônio e carteira são a posição **no fim do mês escolhido** (movimentações posteriores ainda não contam). Movimentações do mesmo dia seguem a ordem de criação.
+- A aba do Meu Espaço fica na URL (`#/individual?tab=entradas`).
+
+## Feedback do app
+- Botão flutuante **Feedback** em todas as telas (logado) → modal: tela (rota atual, editável), **apontar na tela** opcional (clicar num elemento; grava o `data-tour` mais próximo ou um trecho do texto dele), tipo (`bug` Problema · `improvement` Melhoria · `missing` Está faltando), mensagem.
+- Tabela `feedback` (`0006_feedback.sql`): compartilhada pela casa; cada um cria em nome próprio, qualquer um marca `resolved`, só o autor apaga; texto não é editável.
+- Página **Feedback** (`/feedback`): lista com filtros aberto/resolvido e tela, quem mandou, data; marcar resolvido/reabrir; **Copiar abertos para o Claude** → markdown agrupado por tela, para colar na revisão semanal.
+
+## Categorias personalizáveis
+- Tabela `categories(id, household_id, kind 'expense'|'income', name, icon (Material Symbol), color (token de cor da paleta), archived, sort)` — lista **da casa**: os dois veem e editam (só nomes; uso nos gastos pessoais continua privado).
+- As categorias fixas atuais (`src/lib/categories.js` e as de entrada da fase 2) viram o seed inicial de cada casa; `expenses.category`, `incomes.category`, `recurring_incomes.category`, `fixed_bills.category`, `budgets.category` passam a referenciar `categories.id` (FK composta com household quando houver), migrando os valores existentes (`0007`).
+- Configurações → **Categorias**: criar (nome, ícone de uma grade, cor), editar (renomear afeta o histórico), excluir = **arquivar** (some das opções novas, histórico intacto), opcionalmente "mover lançamentos para…" antes. Nunca apaga de verdade: um delete que falhasse só quando o parceiro usa a categoria em lançamentos privados revelaria esse uso.
+
+Detalhes da implementação (categorias e feedback):
+- `0007_categories.sql` roda numa transação: cria `categories`, semeia os padrões em cada casa (trigger `households_seed_categories` para casas novas), converte as chaves de texto antigas (chave ou rótulo; desconhecido → Outros) em `category_id` e apaga as colunas de texto. `budgets` passa a ter PK `(user_id, category_id)`.
+- Mesma casa e mesmo tipo garantidos no banco: FK composta `(category_id, household_id)` em `expenses`/`fixed_bills` e trigger `check_category()` em todas as cinco tabelas (nas privadas, a casa vem de `members`).
+- Sem DELETE: `move_category(de, para)` move linhas da casa e as privadas de quem chamou e sempre arquiva a origem; o destino precisa estar ativo. Nada revela uso privado do parceiro.
+- Feedback: "apontar na tela" grava `[data-tour mais próximo] "trecho"` (máx. 200); dentro de `[data-private]` (Meu Espaço, meu total pessoal) só o nome da área.

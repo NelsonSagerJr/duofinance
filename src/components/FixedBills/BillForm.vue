@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { upsertFixedBill } from '../../lib/store.js'
 import { parseBRL } from '../../lib/money.js'
-import { CATEGORIES } from '../../lib/categories.js'
+import { pickable } from '../../lib/categories.js'
 
 // bill: row to edit (null = create).
 const props = defineProps({ bill: { type: Object, default: null } })
@@ -12,7 +12,8 @@ const b = props.bill || {}
 const name = ref(b.name || '')
 const amount = ref(b.amount_cents ? (b.amount_cents / 100).toFixed(2).replace('.', ',') : '')
 const dueDay = ref(b.due_day || 10)
-const category = ref(b.category || 'contas')
+const categoryOptions = computed(() => pickable('expense', b.category_id))
+const category = ref(b.category_id || (categoryOptions.value.find((c) => c.name === 'Contas') || categoryOptions.value[0])?.id || '')
 const active = ref(b.active ?? true)
 const error = ref('')
 const busy = ref(false)
@@ -21,11 +22,12 @@ async function submit() {
   error.value = ''
   const amount_cents = parseBRL(amount.value)
   if (!amount_cents || amount_cents <= 0) return (error.value = 'Informe um valor válido, ex: 150,00')
+  if (!category.value) return (error.value = 'Escolha uma categoria (crie em Acerto & Metas → Categorias).')
   const due_day = Number(dueDay.value)
   if (!Number.isInteger(due_day) || due_day < 1 || due_day > 31) return (error.value = 'Dia de vencimento deve ser de 1 a 31')
   busy.value = true
   try {
-    const row = { name: name.value.trim(), amount_cents, due_day, category: category.value, active: active.value }
+    const row = { name: name.value.trim(), amount_cents, due_day, category_id: category.value, active: active.value }
     emit('saved', await upsertFixedBill(props.bill ? { id: props.bill.id, ...row } : row))
   } catch (e) {
     error.value = e.message
@@ -59,7 +61,7 @@ const label = 'font-label-md text-label-md text-on-surface-variant'
     <label class="flex flex-col gap-1">
       <span :class="label">Categoria</span>
       <select v-model="category" :class="input">
-        <option v-for="c in CATEGORIES" :key="c.id" :value="c.id">{{ c.label }}</option>
+        <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ c.name }}{{ c.archived ? ' (arquivada)' : '' }}</option>
       </select>
     </label>
 

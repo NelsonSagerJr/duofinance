@@ -54,7 +54,7 @@ const ex = 'rounded-lg bg-surface-container-low p-3 flex flex-col gap-1 text-bod
             <li>Clique em <b>Novo Lançamento</b> (no topo) ou use o <b>Lançamento Rápido</b> da Visão Geral.</li>
             <li>Deixe marcado <b>Casa</b>.</li>
             <li>Preencha descrição, valor (ex.: <b>150,90</b>), data e categoria.</li>
-            <li>Em <b>Quem pagou?</b>, escolha quem tirou o dinheiro do bolso.</li>
+            <li>Em <b>Quem pagou?</b>, escolha quem tirou o dinheiro do bolso (ou <b>Dividido na hora</b>, se cada um pagou a sua parte).</li>
             <li>Clique em <b>Adicionar</b>.</li>
           </ol>
           <div :class="ex"><span><b>Exemplo:</b> {{ a }} pagou R$ 300,00 de mercado → lance "Mercado", R$ 300,00, Casa, pago por {{ a }}. Em 50/50, {{ b }} passa a dever R$ 150,00 desse gasto.</span></div>
@@ -67,12 +67,26 @@ const ex = 'rounded-lg bg-surface-container-low p-3 flex flex-col gap-1 text-bod
         <div :class="body">
           <p>Gasto pessoal é só seu: roupa, academia, presente. Ele é <b>privado</b>: só você vê. A outra pessoa não vê o lançamento, nem o total, nem a categoria. E ele <b>não entra no acerto</b>.</p>
           <ol :class="ol">
-            <li>Abra <b>Novo Lançamento</b> e toque em <b>Pessoal</b>, ou vá em <b>Meu Espaço → Adicionar gasto pessoal</b>.</li>
+            <li>Abra <b>Novo Lançamento</b> e toque em <b>Pessoal</b>, ou vá em <b>Meu Espaço → Gastos → Adicionar gasto pessoal</b>.</li>
             <li>Preencha descrição, valor, data e categoria. Não precisa dizer quem pagou: gasto pessoal é sempre seu.</li>
             <li>Clique em <b>Adicionar</b>.</li>
           </ol>
-          <p>Em <b>Meu Espaço</b> você vê o total do mês por categoria e seu extrato. Quando {{ other }} entra com o próprio login, vê só os gastos pessoais dele(a).</p>
+          <p>Em <b>Meu Espaço → Gastos</b> você vê o total do mês por categoria, seu extrato e sua parte das despesas da casa. Quando {{ other }} entra com o próprio login, vê só os gastos pessoais dele(a).</p>
           <div :class="ex"><span><b>Cuidado:</b> se você lançar um gasto da casa como Pessoal por engano, {{ other }} não vai vê-lo e ele fica fora do acerto. Para corrigir, abra o gasto em Meu Espaço, toque no lápis, troque para <b>Casa</b>, escolha quem pagou e salve.</span></div>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">call_split</span><span class="flex-1">Dividido na hora</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <p>Use quando cada um pagou a própria parte no caixa, sem ninguém adiantar nada para o outro.</p>
+          <ol :class="ol">
+            <li>Lance o gasto como <b>Casa</b>, com o valor total.</li>
+            <li>Em <b>Quem pagou?</b>, escolha <b>Dividido na hora</b>. Em Custos Fixos, a mesma opção aparece em <b>Marcar como paga</b>.</li>
+            <li>Salve. O gasto entra no <b>Total da Casa</b> e na parte de cada um no Meu Espaço, mas <b>não mexe no acerto</b>.</li>
+          </ol>
+          <div :class="ex"><span><b>Exemplo:</b> jantar de R$ 200,00 em 50/50. {{ a }} passou R$ 100,00 no cartão e {{ b }} outros R$ 100,00 → lance R$ 200,00, Dividido na hora. Cada um fica com R$ 100,00 nas saídas e o acerto do mês não muda.</span></div>
+          <p>Na tabela de Despesas da casa (Acerto &amp; Metas), a coluna "Quem pagou" mostra <b>Dividido na hora</b>.</p>
         </div>
       </details>
 
@@ -154,9 +168,96 @@ const ex = 'rounded-lg bg-surface-container-low p-3 flex flex-col gap-1 text-bod
       </details>
 
       <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">insights</span><span class="flex-1">Meu Espaço: resumo do mês</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <p>O Meu Espaço é <b>só seu</b>: {{ other }} não vê suas entradas, investimentos, orçamento nem os totais. Ele tem cinco abas: <b>Resumo, Entradas, Gastos, Investimentos e Orçamento</b>. Todas seguem o mês escolhido no topo.</p>
+          <ul class="list-disc pl-5 flex flex-col gap-1">
+            <li><b>Entradas</b>: tudo que você recebeu no mês.</li>
+            <li><b>Saídas</b>: seus gastos pessoais + <b>sua parte</b> de cada despesa da casa (pela divisão salva nela, com o mesmo arredondamento do acerto).</li>
+            <li><b>Sobra</b> = entradas − saídas. <b>Taxa de poupança</b> = sobra ÷ entradas.</li>
+            <li><b>Investido no mês</b> = aportes − resgates do mês. <b>Patrimônio</b> = soma dos saldos dos investimentos no fim do mês.</li>
+          </ul>
+          <div :class="ex">
+            <span><b>Exemplo:</b> {{ a }} recebeu R$ 5.000,00. Gastou R$ 800,00 em coisas pessoais, e a casa teve R$ 3.400,00 em 50/50 → a parte de {{ a }} é R$ 1.700,00.</span>
+            <span>Saídas: 800 + 1.700 = <b>R$ 2.500,00</b>. Sobra: <b>R$ 2.500,00</b>. Taxa de poupança: <b>50%</b>.</span>
+          </div>
+          <p>Os gráficos mostram os últimos 12 meses: entradas × saídas com a linha da sobra, gastos por categoria contra o limite e a evolução do patrimônio. Passe o mouse ou toque para ver os valores; "Ver em tabela" mostra tudo em números.</p>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">payments</span><span class="flex-1">Entradas: salário e extras</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <ol :class="ol">
+            <li>Em <b>Meu Espaço → Entradas</b>, clique em <b>Nova renda fixa</b>: nome (ex.: "Salário"), valor, dia em que cai e categoria. Você faz isso <b>uma vez só</b>.</li>
+            <li>Todo mês a renda aparece como <b>Pendente</b>. Quando o dinheiro cair, toque em <b>Marcar como recebida</b>: o app lança a entrada do mês.</li>
+            <li>Errou? A seta <b>Desfazer</b> apaga o recebimento do mês. Se o valor mudou (aumento, desconto), edite a renda antes de marcar.</li>
+            <li>Para o que não se repete (freela, bônus, venda), use <b>Nova entrada</b>.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">savings</span><span class="flex-1">Investimentos</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <ol :class="ol">
+            <li>Em <b>Meu Espaço → Investimentos</b>, clique em <b>Novo investimento</b>: nome e tipo (renda fixa, ações, FIIs, cripto, previdência…).</li>
+            <li>Registre cada <b>Aporte</b> (dinheiro que entrou) e cada <b>Resgate</b> (dinheiro que saiu).</li>
+            <li>De vez em quando, use <b>Atualizar saldo</b> com o valor que o banco ou a corretora mostra.</li>
+          </ol>
+          <p><b>Saldo</b> = último saldo informado + aportes − resgates feitos depois dele (sem saldo informado: aportes − resgates). <b>Aportado</b> = aportes − resgates. <b>Rendimento</b> = saldo − aportado, e o % é sobre o aportado.</p>
+          <div :class="ex"><span><b>Exemplo:</b> aportou R$ 1.000,00 em janeiro. Em março o banco mostra R$ 1.030,00 → atualize o saldo: rendimento de R$ 30,00 (3%). Em abril aporta mais R$ 500,00 → saldo R$ 1.530,00, aportado R$ 1.500,00.</span></div>
+          <p>Zerou uma aplicação? Use <b>Arquivar</b> para tirá-la da carteira sem perder o histórico. Em <b>Histórico</b> dá para ver e apagar movimentações.</p>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">donut_small</span><span class="flex-1">Orçamento por categoria</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <ol :class="ol">
+            <li>Em <b>Meu Espaço → Orçamento</b>, toque em <b>Definir limites</b>.</li>
+            <li>Escreva quanto quer gastar por mês em cada categoria. Deixe vazio o que não quiser controlar.</li>
+            <li>Salve. Cada categoria mostra uma barra com o que já foi gasto (pessoal + sua parte da casa) e avisa quando passa do limite.</li>
+          </ol>
+          <div :class="ex"><span><b>Exemplo:</b> limite de Lazer R$ 300,00. Você gastou R$ 180,00 num show e sua parte de um jantar da casa foi R$ 150,00 → R$ 330,00, <b>R$ 30,00 acima</b> do limite.</span></div>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">category</span><span class="flex-1">Categorias</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <p>As categorias são <b>da casa</b>: você e {{ other }} veem e editam a mesma lista, de gastos e de entradas. Os nomes são compartilhados; quais gastos pessoais usam cada uma continua privado.</p>
+          <ol :class="ol">
+            <li>Vá em <b>Acerto &amp; Metas → Categorias</b> (no fim da página) e escolha <b>Gastos</b> ou <b>Entradas</b>.</li>
+            <li><b>Nova categoria</b>: dê um nome, escolha um ícone da grade e uma cor. Ela aparece na hora em todos os formulários, no orçamento e nos gráficos.</li>
+            <li>O <b>lápis</b> renomeia ou troca ícone e cor. Renomear muda o nome em todo o histórico.</li>
+            <li><b>Arquivar</b> tira a categoria das opções novas; os lançamentos antigos continuam com ela. Em <b>Arquivadas</b> dá para reativar.</li>
+            <li><b>Excluir</b> arquiva a categoria: ela some das opções e o histórico continua igual (dá para desarquivar). Se quiser, antes <b>mova os lançamentos para…</b> outra categoria.</li>
+          </ol>
+          <div :class="ex"><span><b>Exemplo:</b> vocês querem separar "Mercado" de "Alimentação". Crie "Mercado" com o ícone de carrinho e use nos próximos lançamentos. Mudou de ideia? Exclua "Mercado" e mova os lançamentos de volta para Alimentação.</span></div>
+          <p>Mover leva os gastos da casa, as contas fixas e os <b>seus</b> lançamentos e limites. Os lançamentos privados de {{ other }} não mudam.</p>
+        </div>
+      </details>
+
+      <details :class="box">
+        <summary :class="summary"><span class="material-symbols-outlined text-primary">rate_review</span><span class="flex-1">Feedback e revisão semanal</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
+        <div :class="body">
+          <p>Achou um problema, quer uma melhoria ou sentiu falta de algo? Mande pelo próprio app.</p>
+          <ol :class="ol">
+            <li>Toque no botão <b>Feedback</b> no canto da tela (no celular, o botão redondo acima do menu).</li>
+            <li>A tela atual já vem marcada. Se quiser, toque em <b>Apontar na tela</b> e depois no botão ou trecho de que está falando. <b>Esc</b> ou <b>Cancelar</b> desiste.</li>
+            <li>Escolha o tipo (<b>Problema</b>, <b>Melhoria</b> ou <b>Está faltando</b>), escreva a mensagem e envie.</li>
+          </ol>
+          <p>Os dois veem tudo na página <RouterLink to="/feedback" class="text-primary font-semibold hover:underline">Feedback</RouterLink>, com filtros por situação e tela. Qualquer um marca como resolvido ou reabre; só quem escreveu pode apagar.</p>
+          <div :class="ex"><span><b>Revisão semanal:</b> uma vez por semana, abra a página Feedback, toque em <b>Copiar abertos para o Claude</b> e cole numa conversa com o Claude. O texto vem organizado por tela, com tipo, quem mandou, data e o elemento apontado. Depois das correções, marque os itens como resolvidos.</span></div>
+          <p>No Meu Espaço, apontar grava só o nome da área, nunca valores ou descrições: o feedback aparece para os dois.</p>
+        </div>
+      </details>
+
+      <details :class="box">
         <summary :class="summary"><span class="material-symbols-outlined text-primary">calendar_month</span><span class="flex-1">Trocar de mês</span><span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span></summary>
         <div :class="body">
-          <p>Use as setas ‹ › ao lado do mês, no topo da tela. Tudo muda junto: totais, contas fixas do mês, gastos pessoais e acerto. Um gasto entra no mês da <b>data</b> dele.</p>
+          <p>Use as setas ‹ › ao lado do mês, no topo da tela. Tudo muda junto: totais, contas fixas do mês, acerto e todo o Meu Espaço. Um gasto entra no mês da <b>data</b> dele.</p>
         </div>
       </details>
 

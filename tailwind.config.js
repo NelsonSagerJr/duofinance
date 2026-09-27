@@ -24,6 +24,11 @@ export default {
         'outline-variant': 'rgb(var(--c-outline-variant) / <alpha-value>)',
         'surface-tint': 'rgb(var(--c-surface-tint) / <alpha-value>)',
         primary: 'rgb(var(--c-primary) / <alpha-value>)',
+        // Chart series (validated with the dataviz palette checker, light + dark): entradas, saídas, sobra, patrimônio.
+        'chart-in': 'rgb(var(--c-chart-in) / <alpha-value>)',
+        'chart-out': 'rgb(var(--c-chart-out) / <alpha-value>)',
+        'chart-net': 'rgb(var(--c-chart-net) / <alpha-value>)',
+        'chart-worth': 'rgb(var(--c-chart-worth) / <alpha-value>)',
         'on-primary': 'rgb(var(--c-on-primary) / <alpha-value>)',
         'primary-container': 'rgb(var(--c-primary-container) / <alpha-value>)',
         'on-primary-container': 'rgb(var(--c-on-primary-container) / <alpha-value>)',

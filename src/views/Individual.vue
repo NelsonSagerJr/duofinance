@@ -1,173 +1,107 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { state, me, openExpenseForm, listExpenses, deleteExpense } from '../lib/store.js'
-import { monthRange, monthLabel } from '../lib/month.js'
-import { formatBRL } from '../lib/money.js'
-import { categoryById } from '../lib/categories.js'
+import { useRoute, useRouter } from 'vue-router'
+import { state, me, listExpenses, listIncomes, listRecurringIncomes, listInvestments, listMoves, listBudgets } from '../lib/store.js'
+import { addMonths, nextMonth, monthLabel } from '../lib/month.js'
+import { monthMetrics, monthlySeries, budgetUsage, portfolio } from '../lib/personal.js'
+import SummaryTab from '../components/Individual/SummaryTab.vue'
+import IncomesTab from '../components/Individual/IncomesTab.vue'
+import ExpensesTab from '../components/Individual/ExpensesTab.vue'
+import InvestmentsTab from '../components/Individual/InvestmentsTab.vue'
+import BudgetTab from '../components/Individual/BudgetTab.vue'
 
-// Personal expenses are private (RLS returns only mine), so this screen is always the logged-in member's.
-const ownerId = computed(() => me.value?.user_id)
-const expenses = ref([])
+// Everything here is private to the logged-in user: RLS returns only my incomes, investments, budgets and
+// personal expenses (house expenses are shared, and only my share of them is used).
+const TABS = [
+  { id: 'resumo', label: 'Resumo', icon: 'insights' },
+  { id: 'entradas', label: 'Entradas', icon: 'payments' },
+  { id: 'gastos', label: 'Gastos', icon: 'shopping_bag' },
+  { id: 'investimentos', label: 'Investimentos', icon: 'savings' },
+  { id: 'orcamento', label: 'Orçamento', icon: 'donut_small' },
+]
+const route = useRoute()
+const router = useRouter()
+// Tab lives in the URL (?tab=...) so reload and the back button keep it.
+const tab = computed({
+  get: () => (TABS.some((t) => t.id === route.query.tab) ? route.query.tab : 'resumo'),
+  set: (id) => router.replace({ query: { ...route.query, tab: id } }),
+})
+
+const data = ref(null) // last loaded snapshot; kept on screen (dimmed) while the next one loads
 const loading = ref(true)
 const error = ref('')
-
 
 let req = 0
 async function load() {
   const id = ++req
+  const month = state.month
   loading.value = true
   error.value = ''
   try {
-    // ponytail: loads the month and filters client-side; 2 people, a month of rows is small.
-    const rows = await listExpenses(monthRange(state.month))
-    if (id === req) expenses.value = rows.filter((e) => e.scope === 'personal')
+    // 12 months back from the chosen month feed the charts; moves need the whole history for balances.
+    const range = { start: addMonths(month, -11), end: nextMonth(month) }
+    const [expenses, incomes, recurring, investments, moves, budgets] = await Promise.all([
+      listExpenses(range), listIncomes(range), listRecurringIncomes(), listInvestments(), listMoves(), listBudgets(),
+    ])
+    if (id === req) data.value = { month, expenses, incomes, recurring, investments, moves, budgets }
   } catch (e) {
-    if (id === req) error.value = e.message || 'Erro ao carregar gastos.'
+    if (id === req) error.value = e.message || 'Erro ao carregar.'
   } finally {
     if (id === req) loading.value = false
   }
 }
 watch(() => [state.month, state.version], load, { immediate: true })
 
-const mine = computed(() => expenses.value.filter((e) => e.owner_id === ownerId.value))
-const total = computed(() => mine.value.reduce((s, e) => s + e.amount_cents, 0))
-const byCategory = computed(() => {
-  const sums = {}
-  for (const e of mine.value) sums[e.category] = (sums[e.category] || 0) + e.amount_cents
-  return Object.entries(sums)
-    .map(([id, cents]) => ({ ...categoryById(id), cents, pct: total.value ? Math.round((cents / total.value) * 100) : 0 }))
-    .sort((a, b) => b.cents - a.cents)
-})
-
-const dayFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
-const shortDate = (d) => dayFmt.format(new Date(d + 'T00:00:00Z')).replace('.', '')
-
-function add() {
-  openExpenseForm(null, { scope: 'personal' })
-}
-
-async function remove(e) {
-  if (!confirm(`Excluir "${e.description}" (${formatBRL(e.amount_cents)})?`)) return
-  try {
-    await deleteExpense(e.id)
-  } catch (err) {
-    alert('Não foi possível excluir: ' + (err.message || err))
+const view = computed(() => {
+  const d = data.value
+  if (!d) return null
+  const base = { ...d, members: state.members, meId: me.value?.user_id }
+  const metrics = monthMetrics({ ...base, month: d.month })
+  return {
+    ...base,
+    metrics,
+    series: monthlySeries({ ...base, endMonth: d.month }),
+    budgetRows: budgetUsage({ budgets: d.budgets, byCategory: metrics.byCategory }),
+    portfolio: portfolio(d.investments, d.moves, d.month),
   }
-}
+})
+const stale = computed(() => loading.value && data.value && data.value.month !== state.month)
 </script>
 
 <template>
-  <div class="flex flex-col w-full gap-space-lg">
-    <!-- Header -->
+  <!-- data-private: feedback "apontar na tela" records only the area name here, never values -->
+  <div data-private class="flex flex-col w-full gap-space-lg min-w-0">
     <div data-tour="personal-header" class="flex flex-col gap-1 bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
       <h1 class="font-headline-sm text-headline-sm text-on-surface">Meu Espaço</h1>
-      <p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+      <p class="font-body-sm text-body-sm text-on-surface-variant flex items-start gap-1">
         <span class="material-symbols-outlined text-[16px]">lock</span>
-        Seus gastos pessoais de {{ monthLabel(state.month) }}. Só você vê esta tela.
+        Suas finanças de {{ monthLabel(state.month) }}: entradas, gastos, investimentos e orçamento. Só você vê esta tela.
       </p>
     </div>
 
-    <div v-if="error" class="bg-error-container text-on-error-container p-space-md rounded-xl font-body-md text-body-md flex items-center justify-between gap-space-md">
-      <span>{{ error }}</span>
-      <button type="button" class="font-label-lg text-label-lg underline" @click="load">Tentar de novo</button>
+    <div role="tablist" aria-label="Seções do Meu Espaço" data-tour="personal-tabs"
+      class="flex gap-1 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <button v-for="t in TABS" :key="t.id" type="button" role="tab" :aria-selected="tab === t.id" :data-tour="`tab-${t.id}`"
+        class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full font-label-lg text-label-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        :class="tab === t.id ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface shadow-sm'"
+        @click="tab = t.id">
+        <span class="material-symbols-outlined text-[18px]">{{ t.icon }}</span>{{ t.label }}
+      </button>
     </div>
 
-    <div v-else-if="loading" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm text-on-surface-variant font-body-md text-body-md">Carregando…</div>
+    <div v-if="error" role="alert" class="bg-error-container text-on-error-container p-space-md rounded-xl font-body-md text-body-md flex items-center justify-between gap-space-md">
+      <span>{{ error }}</span>
+      <button type="button" class="font-label-lg text-label-lg underline shrink-0" @click="load">Tentar de novo</button>
+    </div>
 
-    <template v-else>
-      <!-- Total + by category -->
-      <div data-tour="personal-totals" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col gap-space-md">
-        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-space-xs">
-          <div>
-            <h2 class="font-label-md text-label-md text-on-surface-variant">Gasto pessoal no mês</h2>
-            <p class="font-numeric-stat text-numeric-stat text-on-surface">{{ formatBRL(total) }}</p>
-          </div>
-          <p class="font-body-sm text-body-sm text-on-surface-variant">{{ mine.length }} lançamento(s)</p>
-        </div>
-        <div v-if="byCategory.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
-          <div v-for="c in byCategory" :key="c.id" class="bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-sm">
-            <div class="flex items-start justify-between">
-              <div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-[18px]">{{ c.icon }}</span>
-              </div>
-              <span class="font-label-sm text-label-sm text-primary bg-primary-fixed/60 px-2 py-0.5 rounded-full">{{ c.pct }}%</span>
-            </div>
-            <div class="flex items-baseline justify-between gap-2">
-              <span class="font-label-lg text-label-lg text-on-surface truncate">{{ c.label }}</span>
-              <span class="font-label-md text-label-md font-semibold text-on-surface whitespace-nowrap">{{ formatBRL(c.cents) }}</span>
-            </div>
-            <div class="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden">
-              <div class="bg-primary h-full rounded-full" :style="{ width: c.pct + '%' }"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div v-if="!view" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm text-on-surface-variant font-body-md text-body-md">Carregando…</div>
 
-      <!-- Extrato -->
-      <div data-tour="personal-extrato" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col gap-space-md">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
-          <div>
-            <h3 class="font-headline-sm text-headline-sm text-on-surface">Meu extrato pessoal</h3>
-            <p class="font-body-sm text-body-sm text-on-surface-variant">{{ monthLabel(state.month) }}</p>
-          </div>
-          <button
-            type="button"
-            data-tour="add-personal"
-            class="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-on-primary font-label-lg text-label-lg px-4 py-2.5 rounded-lg transition-all active:scale-95"
-            @click="add"
-          >
-            <span class="material-symbols-outlined text-[18px]">add_circle</span>
-            Adicionar gasto pessoal
-          </button>
-        </div>
-
-        <p v-if="!mine.length" class="py-space-xl text-center text-on-surface-variant font-body-md text-body-md">
-          Nenhum gasto pessoal seu neste mês.
-        </p>
-
-        <ul v-else data-tour="personal-list" class="flex flex-col">
-          <li
-            v-for="e in mine"
-            :key="e.id"
-            class="flex items-center justify-between gap-2 py-3.5 px-2 hover:bg-surface-container-low rounded-lg transition-colors"
-          >
-            <div class="flex items-center gap-space-md min-w-0 flex-1">
-              <div class="hidden sm:flex w-10 h-10 rounded-xl bg-primary-fixed/80 items-center justify-center text-primary shrink-0">
-                <span class="material-symbols-outlined text-[20px]">{{ categoryById(e.category).icon }}</span>
-              </div>
-              <div class="flex flex-col min-w-0">
-                <span class="font-body-md text-body-md text-on-surface font-semibold truncate">{{ e.description }}</span>
-                <div class="flex flex-wrap items-center gap-x-2 font-label-sm text-label-sm text-on-surface-variant">
-                  <span class="whitespace-nowrap">{{ shortDate(e.spent_on) }}</span>
-                  <span>•</span>
-                  <span class="px-1.5 bg-surface-container rounded whitespace-nowrap">{{ categoryById(e.category).label }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <span class="font-label-lg text-label-lg sm:font-headline-sm sm:text-headline-sm text-on-surface whitespace-nowrap mr-1">{{ formatBRL(e.amount_cents) }}</span>
-              <button
-                type="button"
-                class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                aria-label="Editar"
-                title="Editar"
-                @click="openExpenseForm(e)"
-              >
-                <span class="material-symbols-outlined text-[18px]">edit</span>
-              </button>
-              <button
-                type="button"
-                class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container"
-                aria-label="Excluir"
-                title="Excluir"
-                @click="remove(e)"
-              >
-                <span class="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </template>
+    <div v-else role="tabpanel" class="flex flex-col gap-space-lg min-w-0 transition-opacity" :class="{ 'opacity-50 pointer-events-none': stale }" :aria-busy="stale">
+      <SummaryTab v-if="tab === 'resumo'" :view="view" @go="tab = $event" />
+      <IncomesTab v-else-if="tab === 'entradas'" :view="view" />
+      <ExpensesTab v-else-if="tab === 'gastos'" :view="view" />
+      <InvestmentsTab v-else-if="tab === 'investimentos'" :view="view" />
+      <BudgetTab v-else :view="view" />
+    </div>
   </div>
 </template>

@@ -44,3 +44,6 @@ export function daysInMonth(m) {
 export function dueDate(m, day) {
   return `${m.slice(0, 8)}${pad(Math.min(day, daysInMonth(m)))}`
 }
+
+// Default date for a new entry while viewing month m: today if it's in m, else the 1st of m.
+export const defaultDate = (m) => (monthOf(todayISO()) === m ? todayISO() : m)

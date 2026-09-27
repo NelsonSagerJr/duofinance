@@ -18,3 +18,11 @@ export function parseBRL(input) {
 
 // plural(1, 'conta paga', 'contas pagas') -> '1 conta paga'
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+
+// Chart axis ticks: "R$ 5 mil", "R$ 1,2 mi".
+const compact = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1 })
+export const formatBRLCompact = (cents) => compact.format((cents || 0) / 100)
+
+// 0.2345 -> "23,5%"; null -> "—"
+const pctFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 1 })
+export const formatPct = (ratio) => (ratio == null ? '—' : pctFmt.format(ratio))

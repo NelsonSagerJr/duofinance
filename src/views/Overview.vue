@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { state, me, memberName, openExpenseForm, listExpenses, listFixedBills, listSettlements, deleteExpense } from '../lib/store.js'
+import { state, me, memberName, paidByLabel, openExpenseForm, listExpenses, listFixedBills, listSettlements, deleteExpense } from '../lib/store.js'
 import { monthRange, monthLabel, dueDate, todayISO } from '../lib/month.js'
 import { formatBRL, plural } from '../lib/money.js'
-import { categoryById } from '../lib/categories.js'
+import { categoryById, chipClass } from '../lib/categories.js'
 import { computeSettlement } from '../lib/settlement.js'
 import ExpenseForm from '../components/ExpenseForm.vue'
 import StatCard from '../components/Overview/StatCard.vue'
@@ -104,7 +104,7 @@ const card = 'bg-surface-container-lowest rounded-xl p-space-md md:p-space-lg sh
         </template>
         <template v-else>Nenhuma conta fixa cadastrada</template>
       </StatCard>
-      <StatCard data-tour="stat-personal" label="Meus gastos pessoais" icon="lock" :value="formatBRL(myPersonal)">
+      <StatCard data-tour="stat-personal" data-private label="Meus gastos pessoais" icon="lock" :value="formatBRL(myPersonal)">
         Só você vê · fora do acerto
       </StatCard>
     </div>
@@ -150,8 +150,8 @@ const card = 'bg-surface-container-lowest rounded-xl p-space-md md:p-space-lg sh
           <ul v-else class="flex flex-col gap-space-xs">
             <li v-for="b in pendingBills.slice(0, 5)" :key="b.id" class="flex items-center justify-between gap-3 p-space-sm md:p-space-md rounded-xl hover:bg-surface-container-low transition-colors">
               <div class="flex items-center gap-space-md min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center shrink-0" :class="b.overdue ? 'text-tertiary' : 'text-primary'">
-                  <span class="material-symbols-outlined text-[22px]">{{ categoryById(b.category).icon }}</span>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" :class="chipClass(categoryById(b.category_id))">
+                  <span class="material-symbols-outlined text-[22px]">{{ categoryById(b.category_id).icon }}</span>
                 </div>
                 <div class="flex flex-col min-w-0">
                   <span class="font-label-lg text-label-lg text-on-surface truncate">{{ b.name }}</span>
@@ -175,14 +175,14 @@ const card = 'bg-surface-container-lowest rounded-xl p-space-md md:p-space-lg sh
           <h2 class="font-headline-sm text-headline-sm text-on-surface">Atividades Recentes</h2>
           <p v-if="!recent.length" class="text-body-md text-on-surface-variant">Nenhum lançamento neste mês.</p>
           <ul v-else class="flex flex-col gap-space-sm">
-            <li v-for="e in recent" :key="e.id" class="flex items-center justify-between gap-2">
+            <li v-for="e in recent" :key="e.id" :data-private="e.scope === 'personal' || null" class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-3 min-w-0 flex-1">
-                <div class="hidden sm:flex w-8 h-8 rounded-full bg-surface-container items-center justify-center text-primary shrink-0">
-                  <span class="material-symbols-outlined text-[18px]">{{ categoryById(e.category).icon }}</span>
+                <div class="hidden sm:flex w-8 h-8 rounded-full items-center justify-center shrink-0" :class="chipClass(categoryById(e.category_id))">
+                  <span class="material-symbols-outlined text-[18px]">{{ categoryById(e.category_id).icon }}</span>
                 </div>
                 <div class="flex flex-col min-w-0">
                   <span class="font-body-md text-body-md text-on-surface font-semibold truncate">{{ e.description }}</span>
-                  <span class="font-body-sm text-body-sm text-on-surface-variant break-words">{{ ddmm(e.spent_on) }} · Pago por {{ memberName(e.paid_by) }}</span>
+                  <span class="font-body-sm text-body-sm text-on-surface-variant break-words">{{ ddmm(e.spent_on) }} · {{ e.paid_by ? `Pago por ${memberName(e.paid_by)}` : paidByLabel(null) }}</span>
                 </div>
               </div>
               <div class="flex items-center gap-1 shrink-0">

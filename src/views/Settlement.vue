@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { state, memberName, listExpenses, listSettlements, addSettlement, deleteExpense, openExpenseForm } from '../lib/store.js'
+import { state, memberName, paidByLabel, listExpenses, listSettlements, addSettlement, deleteExpense, openExpenseForm } from '../lib/store.js'
 import { computeSettlement } from '../lib/settlement.js'
 import { formatBRL } from '../lib/money.js'
-import { categoryById } from '../lib/categories.js'
+import { categoryById, chipClass } from '../lib/categories.js'
 import { monthRange, monthLabel } from '../lib/month.js'
 import GoalsSection from '../components/Settlement/GoalsSection.vue'
 import SettingsSection from '../components/Settlement/SettingsSection.vue'
+import CategoriesSection from '../components/Settlement/CategoriesSection.vue'
 
 const expenses = ref([])
 const settlements = ref([])
@@ -153,10 +154,10 @@ const dateBR = (d) => d.split('-').reverse().join('/')
               <td class="px-3 py-3 text-on-surface">{{ e.description }}</td>
               <td class="px-3 py-3">
                 <span class="inline-flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded-full font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
-                  <span class="material-symbols-outlined text-[14px]">{{ categoryById(e.category).icon }}</span>{{ categoryById(e.category).label }}
+                  <span class="material-symbols-outlined text-[14px] rounded-full" :class="chipClass(categoryById(e.category_id))">{{ categoryById(e.category_id).icon }}</span>{{ categoryById(e.category_id).name }}
                 </span>
               </td>
-              <td class="px-3 py-3 font-label-md text-label-md whitespace-nowrap">{{ memberName(e.paid_by) }}</td>
+              <td class="px-3 py-3 font-label-md text-label-md whitespace-nowrap" :class="{ 'text-on-surface-variant': !e.paid_by }">{{ paidByLabel(e.paid_by) }}</td>
               <td class="px-3 py-3 whitespace-nowrap text-on-surface-variant">{{ split(e) }}%</td>
               <td class="px-3 py-3 text-right whitespace-nowrap font-semibold">{{ formatBRL(e.amount_cents) }}</td>
               <td class="px-3 py-3 whitespace-nowrap text-right">
@@ -174,5 +175,6 @@ const dateBR = (d) => d.split('-').reverse().join('/')
     </section>
 
     <SettingsSection />
+    <CategoriesSection />
   </div>
 </template>

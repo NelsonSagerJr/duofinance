@@ -50,6 +50,10 @@
     --c-tertiary-fixed-dim: 255 178 183;
     --c-on-tertiary-fixed: 64 0 13;
     --c-on-tertiary-fixed-variant: 146 0 42;
+    --c-chart-in: 15 143 106;
+    --c-chart-out: 235 104 52;
+    --c-chart-net: 74 58 167;
+    --c-chart-worth: 42 120 214;
     --c-background: 250 248 255;
     --c-on-background: 19 27 46;
     --c-surface-variant: 218 226 253;
@@ -105,6 +109,10 @@
     --c-tertiary-fixed-dim: 74 0 19;
     --c-on-tertiary-fixed: 255 218 219;
     --c-on-tertiary-fixed-variant: 255 178 183;
+    --c-chart-in: 25 158 112;
+    --c-chart-out: 217 89 38;
+    --c-chart-net: 144 133 233;
+    --c-chart-worth: 57 135 229;
     --c-background: 15 20 32;
     --c-on-background: 218 226 253;
     --c-surface-variant: 61 73 71;
@@ -150,3 +158,22 @@
 .duo-tour .driver-popover-arrow-side-right { border-top-color: transparent; border-bottom-color: transparent; border-left-color: transparent; }
 .duo-tour .driver-popover-arrow-side-top { border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent; }
 .duo-tour .driver-popover-arrow-side-bottom { border-top-color: transparent; border-left-color: transparent; border-right-color: transparent; }
+
+/* Feedback "apontar na tela" (lib/feedback.js pickElement). */
+.duo-picking, .duo-picking * { cursor: crosshair !important; }
+.duo-pick-box {
+  position: fixed; z-index: 90; pointer-events: none; border-radius: 8px;
+  border: 2px solid rgb(var(--c-primary)); background: rgb(var(--c-primary) / 0.12);
+  box-shadow: 0 0 0 4px rgb(var(--c-primary) / 0.18);
+  transition: top 60ms, left 60ms, width 60ms, height 60ms;
+}
+.duo-pick-bar {
+  position: fixed; z-index: 91; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: calc(100vw - 24px); display: flex; align-items: center; gap: 12px;
+  padding: 8px 8px 8px 14px; border-radius: 12px; font: 500 14px/20px Inter, sans-serif;
+  background: rgb(var(--c-inverse-surface)); color: rgb(var(--c-inverse-on-surface)); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+}
+.duo-pick-bar button {
+  cursor: pointer !important; flex-shrink: 0; padding: 6px 12px; border-radius: 8px; font-weight: 600;
+  background: rgb(var(--c-inverse-primary)); color: rgb(var(--c-inverse-surface));
+}

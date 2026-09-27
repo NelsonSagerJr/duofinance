@@ -1,6 +1,22 @@
 // Regra do acerto (docs/spec.md). Pure: no Supabase, no Vue.
 // expenses: rows (only scope 'house' count), each with its own share_pct {user_id: pct}; members: [{ user_id }];
 // settlements: rows for the same month [{ from_id, to_id, amount_cents }].
+
+// Each member's share of one house expense, in cents, summing exactly to the amount.
+// Rounding leftover (+/- 1 cent) stays with whoever paid; "Dividido na hora" (paid_by null) gives it to the
+// first member, so the parts still add up.
+export function dueByMember(e, members) {
+  const due = {}
+  let assigned = 0
+  for (const m of members) {
+    due[m.user_id] = Math.round((e.amount_cents * Number(e.share_pct?.[m.user_id] ?? 0)) / 100)
+    assigned += due[m.user_id]
+  }
+  const rest = e.paid_by && e.paid_by in due ? e.paid_by : members[0]?.user_id
+  if (rest) due[rest] += e.amount_cents - assigned
+  return due
+}
+
 export function computeSettlement({ expenses = [], members = [], settlements = [] }) {
   const per = {}
   for (const m of members) per[m.user_id] = { due: 0, paid: 0, balance: 0 }
@@ -8,18 +24,14 @@ export function computeSettlement({ expenses = [], members = [], settlements = [
 
   for (const e of expenses) {
     if (e.scope !== 'house') continue
-    const amount = e.amount_cents
-    total += amount
-    const pct = (id) => Number(e.share_pct?.[id] ?? 0)
-    let assigned = 0
-    for (const m of members) {
-      const due = Math.round((amount * pct(m.user_id)) / 100)
-      per[m.user_id].due += due
-      assigned += due
+    total += e.amount_cents
+    const due = dueByMember(e, members)
+    for (const id in due) {
+      per[id].due += due[id]
+      // Dividido na hora: everyone paid their own part at the till, so it nets to zero.
+      if (!e.paid_by) per[id].paid += due[id]
     }
-    // Rounding leftover (+/- 1 cent) stays with whoever paid.
-    per[e.paid_by].due += amount - assigned
-    per[e.paid_by].paid += amount
+    if (e.paid_by) per[e.paid_by].paid += e.amount_cents
   }
 
   const net = {}

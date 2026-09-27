@@ -69,8 +69,10 @@ function buildSteps() {
     s('/', 'theme', 'Tema claro ou escuro',
       'Escolha tema do sistema, claro ou escuro. No celular, cada toque alterna entre os três.'),
     s('/', 'nav', 'Menu',
-      '<b>Visão Geral</b>: resumo do mês.<br><b>Custos Fixos</b>: contas que se repetem todo mês.<br><b>Meu Espaço</b>: seus gastos pessoais (privados).<br><b>Acerto &amp; Metas</b>: quem deve quanto, metas e configurações.<br><b>Como usar</b>: guia passo a passo e este tour.'),
+      '<b>Visão Geral</b>: resumo do mês.<br><b>Custos Fixos</b>: contas que se repetem todo mês.<br><b>Meu Espaço</b>: suas finanças pessoais (privadas): entradas, gastos, investimentos e orçamento.<br><b>Acerto &amp; Metas</b>: quem deve quanto, metas, configurações e categorias.<br><b>Como usar</b>: guia passo a passo e este tour.<br><b>Feedback</b>: o que vocês pediram para melhorar no app (no celular, pelo botão redondo de feedback).'),
     s('/', 'logout', 'Sair', 'Encerra a sessão neste aparelho. Seus dados continuam salvos.'),
+    s('/', 'feedback-button', 'Feedback',
+      'Achou um problema, quer uma melhoria ou sentiu falta de algo? Toque aqui, em qualquer tela. Dá para <b>apontar na tela</b> o botão ou trecho de que você está falando. Os dois veem os feedbacks.', 'left'),
 
     // ---- Visão Geral
     s('/', 'stat-house', 'Total da Casa',
@@ -91,6 +93,8 @@ function buildSteps() {
       `<b>Casa</b>: gasto dos dois. Os dois veem e ele entra no acerto.<br><b>Pessoal</b>: privado, só você vê, e fica fora do acerto.<br><br>Atenção: se lançar um gasto da casa como Pessoal por engano, ${b} não vai vê-lo (nem ele entra no acerto) até você editar e trocar para Casa.`),
     s('/', ['paid-by', 'quick-add'], 'Quem pagou?',
       `Quem tirou o dinheiro do bolso. É isso que decide o acerto: se ${n1} pagou o mercado inteiro, ${n2} fica devendo a parte que cabe a ele(a). (Só aparece em gastos da casa; o pessoal é sempre seu.)`),
+    s('/', ['split-at-till', 'paid-by', 'quick-add'], 'Dividido na hora',
+      `Quando cada um pagou a própria parte no caixa (ex.: restaurante de R$ 200, R$ 100 no cartão de ${n1} e R$ 100 no de ${n2}). O gasto conta no total da casa e na parte de cada um no Meu Espaço, mas <b>não mexe no acerto</b>: ninguém deve nada a ninguém por ele.`),
     s('/', ['split', 'quick-add'], 'Dividir diferente do padrão',
       `Cada gasto da casa é salvo com a divisão padrão do momento (ex.: 50/50, ajustável em Configurações). Marque esta opção para <b>um gasto específico</b> com outra divisão.<br><br>Ex.: aluguel de R$ 2.000 em 70/30 → ${n1} deve R$ 1.400 e ${n2} R$ 600, só nesse lançamento.`),
 
@@ -103,19 +107,42 @@ function buildSteps() {
     s('/fixos', ['bill-status', 'bills-list'], 'Status da conta',
       '<b>Paga</b>: já foi lançada neste mês.<br><b>Pendente</b>: ainda não venceu.<br><b>Vencida</b>: passou do dia e não foi paga.'),
     s('/fixos', ['bill-pay', 'bills-list'], 'Marcar como paga',
-      'Pergunta quem pagou e cria automaticamente um <b>gasto da casa</b> neste mês com o valor da conta. Ele entra no Total da Casa e no acerto.'),
+      'Pergunta quem pagou e cria automaticamente um <b>gasto da casa</b> neste mês com o valor da conta. Ele entra no Total da Casa e no acerto. Se cada um pagou a sua parte, escolha <b>Dividido na hora</b>: entra no total, sem mexer no acerto.'),
     s('/fixos', ['bill-actions', 'bills-list'], 'Editar, excluir ou desfazer',
       'Lápis edita a conta, lixeira exclui (pagamentos antigos continuam no histórico). Numa conta paga aparece a seta de desfazer, que apaga o pagamento do mês.'),
 
-    // ---- Meu Espaço
-    s('/individual', 'personal-header', 'Meu Espaço',
-      `Seus gastos pessoais do mês: academia, roupa, presentes… Esta tela é <b>só sua</b>: ${b} não vê nada daqui, nem os totais. Quando ${b} entra, vê o próprio espaço.`),
-    s('/individual', 'personal-totals', 'Total por categoria',
-      'Quanto você gastou no mês e como isso se divide entre as categorias.'),
-    s('/individual', 'add-personal', 'Adicionar gasto pessoal',
+    // ---- Meu Espaço (each tab has its own route so the tour opens it; ?tab= is how the page remembers it)
+    s('/individual?tab=resumo', 'personal-header', 'Meu Espaço',
+      `Suas finanças pessoais: o que entra, o que sai, investimentos e orçamento. Esta tela é <b>só sua</b>: ${b} não vê nada daqui, nem os totais. Quando ${b} entra, vê o próprio espaço.`),
+    s('/individual?tab=resumo', 'personal-tabs', 'Cinco abas',
+      '<b>Resumo</b>: os números e gráficos do mês.<br><b>Entradas</b>: salário e extras.<br><b>Gastos</b>: seus gastos pessoais e sua parte da casa.<br><b>Investimentos</b>: sua carteira.<br><b>Orçamento</b>: limites por categoria.<br><br>Tudo segue o mês escolhido lá em cima.'),
+    s('/individual?tab=resumo', 'my-kpis', 'Os números do mês',
+      `<b>Entradas</b>: o que você recebeu.<br><b>Saídas</b>: seus gastos pessoais + <b>sua parte</b> das despesas da casa (pela divisão de cada uma).<br><b>Sobra</b> = entradas − saídas; a <b>taxa de poupança</b> é quanto da renda sobrou.<br><b>Investido no mês</b> = aportes − resgates; <b>patrimônio</b> = soma dos saldos dos investimentos.<br><br>Ex.: entrou R$ 5.000, você gastou R$ 800 pessoal e sua parte da casa deu R$ 1.700 → saídas R$ 2.500, sobra R$ 2.500, taxa 50%.`),
+    s('/individual?tab=resumo', 'chart-cashflow', 'Entradas × saídas',
+      'Os últimos 12 meses até o mês escolhido: colunas de entradas e saídas e a linha da sobra. Passe o mouse ou toque num mês para ver os valores; "Ver em tabela" mostra tudo em números.'),
+    s('/individual?tab=resumo', 'chart-budget', 'Gastos por categoria',
+      'Quanto você gastou em cada categoria no mês (pessoal + sua parte da casa). O tracinho marca o limite do orçamento; o que passou fica em vermelho com "▲ acima".'),
+    s('/individual?tab=resumo', 'chart-worth', 'Evolução do patrimônio', 'A soma dos saldos dos seus investimentos no fim de cada um dos últimos 12 meses.'),
+    s('/individual?tab=entradas', 'recurring-list', 'Rendas fixas',
+      'Cadastre uma vez o que cai todo mês (salário, aluguel que você recebe…) com valor e dia. Todo mês ela aparece aqui como pendente.'),
+    s('/individual?tab=entradas', ['recurring-receive', 'recurring-status', 'recurring-list'], 'Marcar como recebida',
+      'Quando o dinheiro cair, um toque lança a entrada do mês com o valor da renda. A seta de desfazer apaga esse recebimento. Se o valor mudou, edite a renda antes.'),
+    s('/individual?tab=entradas', ['add-income', 'incomes-list'], 'Entradas avulsas',
+      'Freela, bônus, venda de algo usado: o que não se repete. Lance com descrição, valor, data e categoria.'),
+    s('/individual?tab=gastos', 'add-personal', 'Adicionar gasto pessoal',
       'Abre o formulário já marcado como Pessoal. Gastos pessoais <b>não entram no acerto</b> da casa.'),
-    s('/individual', ['personal-list', 'personal-extrato'], 'Extrato pessoal',
+    s('/individual?tab=gastos', ['personal-list', 'personal-extrato'], 'Extrato pessoal',
       'Todos os seus gastos pessoais do mês. Use o lápis para editar (inclusive trocar para Casa, se foi engano) e a lixeira para excluir.'),
+    s('/individual?tab=gastos', 'house-share', 'Minha parte da casa',
+      `Quanto de cada despesa da casa cabe a você. É isso que entra nas suas saídas, não o valor inteiro. Ex.: mercado de R$ 300 em 50/50 → R$ 150 para você, não importa se quem pagou foi ${n1}, ${n2} ou se foi dividido na hora.`),
+    s('/individual?tab=investimentos', ['add-investment', 'portfolio'], 'Sua carteira',
+      'Crie cada aplicação (CDB, ações, FIIs, previdência…). A tabela mostra o <b>aportado</b> (aportes − resgates), o <b>saldo</b> e o <b>rendimento</b> em reais e em %.'),
+    s('/individual?tab=investimentos', ['move-actions', 'portfolio'], 'Aporte, resgate e saldo',
+      '<b>Aporte</b>: dinheiro que você colocou. <b>Resgate</b>: o que tirou. <b>Atualizar saldo</b>: informe o saldo que o banco mostra; a diferença para o aportado vira rendimento.<br><br>Ex.: aportou R$ 1.000 e o banco mostra R$ 1.030 → rendimento de R$ 30 (3%). Arquive o que você já zerou.'),
+    s('/individual?tab=orcamento', 'budget-list', 'Orçamento',
+      'Um limite mensal por categoria. A barra mostra quanto já foi (pessoal + sua parte da casa) e avisa quando passa do limite.'),
+    s('/individual?tab=orcamento', 'budget-edit', 'Definir limites',
+      'Escreva quanto quer gastar por mês em cada categoria (ex.: Lazer 300,00). Deixe vazio o que não quiser controlar. Vale para todos os meses.'),
 
     // ---- Acerto & Metas
     s('/acerto', 'acerto-transfer', 'Quem transfere para quem',
@@ -130,11 +157,17 @@ function buildSteps() {
     s('/acerto', ['goal-contribute', 'goals'], 'Aportar',
       'Registre quanto alguém guardou para a meta. A barra de progresso e o total de cada pessoa atualizam na hora.'),
     s('/acerto', 'house-expenses', 'Despesas da casa',
-      'Todos os gastos da casa que formam o acerto do mês, com quem pagou e a divisão usada em cada um.'),
+      'Todos os gastos da casa que formam o acerto do mês, com quem pagou (ou "Dividido na hora") e a divisão usada em cada um.'),
     s('/acerto', 'settings', 'Configurações', 'Seu nome como aparece no app e a divisão padrão das despesas da casa.'),
     s('/acerto', 'settings-pct', 'Divisão padrão (%)',
       `Sua parte em todos os gastos da casa. A outra pessoa fica com o resto: 60 para ${a} = 40 para ${b}. Vale para os <b>próximos</b> lançamentos: cada gasto guarda a divisão com que foi salvo, então meses anteriores não mudam.`),
     s('/acerto', 'settings-logout', 'Sair', 'Também dá para sair por aqui.'),
+    s('/acerto', 'categories', 'Categorias',
+      'A lista é <b>da casa</b>: os dois veem e editam. Crie categorias de gastos e de entradas com ícone e cor; elas aparecem em todos os formulários, no orçamento e nos gráficos. Quais gastos pessoais usam cada uma continua privado.'),
+    s('/acerto', ['category-actions', 'categories'], 'Editar, arquivar ou excluir',
+      'O lápis renomeia (o nome muda em todo o histórico). <b>Arquivar</b> tira das opções novas e mantém o histórico. <b>Excluir</b> arquiva a categoria, e dá para antes <b>mover os lançamentos</b> para outra.'),
+    s('/feedback', ['feedback-copy'], 'Feedback e revisão semanal',
+      'Aqui ficam os feedbacks dos dois, com filtros por situação e tela. Uma vez por semana, toque em <b>Copiar abertos para o Claude</b>, cole numa conversa com o Claude e peça as correções. Depois marque como resolvido o que foi feito.'),
 
     // ---- Ajuda
     s('/ajuda', 'help-restart', 'Como usar',
@@ -167,6 +200,7 @@ export async function startTour(router) {
     // storage blocked: tour still runs
   }
   closeExpenseForm()
+  state.feedbackOpen = false
   const steps = buildSteps()
   let busy = false
 
@@ -176,7 +210,7 @@ export async function startTour(router) {
     busy = true
     try {
       const step = steps[index]
-      if (step.route !== router.currentRoute.value.path) await router.push(step.route)
+      if (step.route !== router.currentRoute.value.fullPath) await router.push(step.route)
       await waitForTarget(step)
       reveal(pick(step))
       move()
@@ -211,7 +245,7 @@ export async function startTour(router) {
   })
 
   try {
-    if (router.currentRoute.value.path !== steps[0].route) await router.push(steps[0].route)
+    if (router.currentRoute.value.fullPath !== steps[0].route) await router.push(steps[0].route)
     await waitForTarget(steps[1]) // let the first page load behind the welcome popover
     active.drive(0)
   } finally {

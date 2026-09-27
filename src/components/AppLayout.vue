@@ -1,19 +1,23 @@
 <script setup>
 import { computed, watch, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
-import { state, openExpenseForm, closeExpenseForm, signOut } from '../lib/store.js'
+import { useRoute, useRouter } from 'vue-router'
+import { state, openExpenseForm, closeExpenseForm, signOut, loadCategories } from '../lib/store.js'
 import { monthLabel, prevMonth, nextMonth } from '../lib/month.js'
 import ExpenseForm from './ExpenseForm.vue'
+import FeedbackModal from './FeedbackModal.vue'
 import { theme, themeOptions, cycleTheme } from '../lib/theme.js'
 import { startTour, maybeStartTour } from '../lib/tour.js'
 
 const router = useRouter()
+const route = useRoute()
+// mobile: false = sidebar only (the bottom nav has room for 5; Feedback is reachable from the floating button).
 const nav = [
   { to: '/', icon: 'dashboard', label: 'Visão Geral', short: 'Geral' },
   { to: '/fixos', icon: 'home_work', label: 'Custos Fixos', short: 'Fixos' },
   { to: '/individual', icon: 'person_outline', label: 'Meu Espaço', short: 'Meu espaço' },
   { to: '/acerto', icon: 'balance', label: 'Acerto de Contas & Metas', short: 'Acerto' },
   { to: '/ajuda', icon: 'help', label: 'Como usar', short: 'Ajuda' },
+  { to: '/feedback', icon: 'rate_review', label: 'Feedback', short: 'Feedback', mobile: false },
 ]
 const currentTheme = computed(() => themeOptions.find((o) => o.value === theme.value))
 const couple = computed(() => state.members.map((m) => m.name).join(' & '))
@@ -33,6 +37,8 @@ watch(
   (open) => (open ? addEventListener('keydown', onKey) : removeEventListener('keydown', onKey)),
 )
 onBeforeUnmount(() => removeEventListener('keydown', onKey))
+// The category list is shared: pick up the partner's changes when moving between screens.
+watch(() => route.path, () => state.household && loadCategories().catch(() => {}))
 // Household loads async after login; start once members are known.
 watch(() => state.members.length, (n) => n && maybeStartTour(router), { immediate: true })
 </script>
@@ -109,7 +115,7 @@ watch(() => state.members.length, (n) => n && maybeStartTour(router), { immediat
     </div>
   </header>
 
-  <main class="md:pl-56 pt-16 pb-24 md:pb-0 min-h-screen bg-surface">
+  <main class="md:pl-56 pt-16 pb-36 md:pb-20 min-h-screen bg-surface">
     <div class="px-4 py-space-lg md:px-space-xl md:py-space-xl flex flex-col gap-space-lg w-full max-w-[1600px] mx-auto">
       <slot />
     </div>
@@ -117,13 +123,22 @@ watch(() => state.members.length, (n) => n && maybeStartTour(router), { immediat
 
   <!-- Bottom nav (mobile) -->
   <nav data-tour="nav" class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.06)] grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
-    <RouterLink v-for="n in nav" :key="n.to" :to="n.to"
+    <RouterLink v-for="n in nav.filter((n) => n.mobile !== false)" :key="n.to" :to="n.to"
       class="flex flex-col items-center gap-0.5 py-2 text-on-surface-variant font-label-sm text-label-sm"
       active-class="!text-primary">
       <span class="material-symbols-outlined text-[22px]">{{ n.icon }}</span>
       <span>{{ n.short }}</span>
     </RouterLink>
   </nav>
+
+  <!-- Feedback: floating button on every screen, above the mobile bottom nav -->
+  <button v-if="!state.form.open && !state.feedbackOpen" type="button" data-tour="feedback-button" aria-label="Enviar feedback sobre o app" title="Feedback"
+    class="fixed z-30 right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:right-6 md:bottom-6 inline-flex items-center gap-2 h-11 w-11 md:w-auto justify-center md:px-4 rounded-full bg-secondary-container text-on-secondary-container shadow-[0_4px_14px_rgba(0,0,0,0.18)] hover:brightness-110 active:scale-95 transition-all font-label-lg text-label-lg"
+    @click="state.feedbackOpen = true">
+    <span class="material-symbols-outlined text-[20px]">rate_review</span>
+    <span class="hidden md:inline">Feedback</span>
+  </button>
+  <FeedbackModal v-if="state.feedbackOpen" @close="state.feedbackOpen = false" />
 
   <!-- Expense modal: opened anywhere via openExpenseForm(expense?, defaults?) -->
   <div v-if="state.form.open" class="fixed inset-0 z-[60] bg-scrim/40 dark:bg-scrim/60 flex items-end md:items-center justify-center md:p-4" @click.self="closeExpenseForm()">

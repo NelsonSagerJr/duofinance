@@ -11,22 +11,17 @@ A ideia é simples:
 
 ## O que dá pra fazer
 
-- **Lançar gastos** da casa ou pessoais, dizendo quem pagou.
+- **Lançar gastos** da casa ou pessoais, dizendo quem pagou. Se cada um pagou a sua parte no caixa, marca "Dividido na hora": conta no total da casa e não mexe no acerto.
 - **Acerto do mês**: o app soma o que cada um pagou das contas da casa e diz "Fulano transfere R$ X pra Ciclano". Divide 50/50 por padrão; dá pra mudar o padrão (ex.: 60/40) ou só um gasto específico (ex.: aluguel 70/30). Depois de transferir, é só marcar como quitado.
 - **Contas fixas**: cadastra aluguel, condomínio, internet… e todo mês vê o que está pago, pendente ou vencido. "Marcar como paga" já lança a despesa.
 - **Metas a dois**: viagem, reserva de emergência, com os aportes de cada um.
+- **Meu Espaço**, só seu: salário e outras entradas, gastos pessoais mais a sua parte da casa, carteira de investimentos (aporte, resgate, saldo e rendimento) e limite por categoria. Tem um resumo do mês com sobra e taxa de poupança, e gráficos dos últimos 12 meses. O outro não vê nada disso, nem os totais.
+- **Categorias do jeito de vocês**: a lista é da casa, com ícone e cor. Dá pra criar, renomear, arquivar ou juntar duas (move os lançamentos e apaga a antiga). Quem usa cada categoria nos gastos pessoais continua privado.
+- **Feedback dentro do app**: um botão em todas as telas pra mandar problema, melhoria ou o que está faltando, apontando o lugar na tela. Uma vez por semana a gente copia os abertos e cola numa conversa com o Claude pra corrigir.
 - **Tema claro e escuro**, versão de celular e dá pra instalar como app ("Adicionar à tela inicial").
 - **Tour guiado** no primeiro acesso e uma página "Como usar" com o passo a passo.
 
-| Contas fixas | Acerto & metas |
-|---|---|
-| ![Contas fixas](docs/screenshots/fixos.png) | ![Acerto e metas](docs/screenshots/acerto.png) |
-
-| Modo escuro | Celular |
-|---|---|
-| ![Modo escuro](docs/screenshots/overview-dark.png) | <img src="docs/screenshots/mobile-light.png" width="260" alt="Celular"> <img src="docs/screenshots/mobile-dark.png" width="260" alt="Celular, modo escuro"> |
-
-![Tour guiado](docs/screenshots/tour.png)
+![Modo escuro](docs/screenshots/overview-dark.png)
 
 <sub>Prints com dados de teste.</sub>
 
@@ -41,7 +36,9 @@ Para cada gasto da **casa** no mês:
 
 > Exemplo, 50/50: Ana pagou R$ 300 de mercado e Bruno pagou R$ 100 de luz. Total R$ 400, cada um deve R$ 200. Ana está +R$ 100, Bruno −R$ 100 → **Bruno transfere R$ 100 pra Ana.**
 
-Gastos pessoais nunca entram no acerto. A lógica fica em [`src/lib/settlement.js`](src/lib/settlement.js), com testes.
+Se o gasto foi "Dividido na hora", cada um já pagou a própria parte, então ele soma no total mas o saldo de ninguém muda.
+
+Gastos pessoais nunca entram no acerto. No Meu Espaço, a sua parte de cada gasto da casa (com o mesmo arredondamento) entra nas suas saídas, junto com os gastos pessoais. A lógica fica em [`src/lib/settlement.js`](src/lib/settlement.js), com testes.
 
 ## Stack
 
@@ -56,7 +53,7 @@ Custo total: R$ 0.
 
 O site é estático e fala direto com o Supabase usando a *publishable key*, que é pública por design (ela vai no JavaScript de qualquer jeito). Quem protege os dados é o banco:
 
-- **RLS em todas as tabelas**: cada usuário só enxerga a própria casa, e gastos pessoais só o próprio dono.
+- **RLS em todas as tabelas**: cada usuário só enxerga a própria casa; gastos pessoais, entradas, investimentos e orçamento, só o próprio dono.
 - Chaves estrangeiras compostas impedem apontar um gasto pra um membro ou conta de outra casa.
 - Percentuais só mudam por uma função que mantém a soma em 100; `TRUNCATE` e acesso anônimo revogados; tamanho de texto limitado.
 - Cadastro público desligado: só os usuários criados à mão entram. Mesmo que alguém consiga criar conta, não vê nada.
@@ -101,7 +98,7 @@ npm test
 src/
   views/        telas (Visão Geral, Custos Fixos, Meu Espaço, Acerto & Metas, Como usar, Login)
   components/   layout, formulário de lançamento e peças de cada tela
-  lib/          store (Supabase), acerto, dinheiro, mês, tema, tour
+  lib/          store (Supabase), acerto, finanças pessoais, dinheiro, mês, tema, tour
 supabase/
   migrations/   schema + RLS, rode em ordem
   seed.sql      cria a casa e os dois membros

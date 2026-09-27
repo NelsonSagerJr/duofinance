@@ -42,6 +42,23 @@ describe('computeSettlement', () => {
     expect(done.transfer).toBe(null)
   })
 
+  it('dividido na hora: counts in the total but leaves the balance untouched', () => {
+    const base = computeSettlement({ members, expenses: [house(10000, A)] })
+    const r = computeSettlement({ members, expenses: [house(10000, A), house(9001, null, { [A]: 60, [B]: 40 })] })
+    expect(r.total).toBe(19001)
+    expect(r.transfer).toEqual(base.transfer)
+    expect(r.perMember[B]).toEqual({ due: 5000 + 3600, paid: 3600, balance: -5000 })
+    expect(r.perMember[A].due - base.perMember[A].due).toBe(5401) // 60% of 90,01 = 54,006 -> 5401
+  })
+
+  it('dividido na hora with odd cents: parts still sum to the amount, nobody owes', () => {
+    const r = computeSettlement({ members, expenses: [house(1001, null)] })
+    expect(r.perMember[A].due + r.perMember[B].due).toBe(1001)
+    expect(r.perMember[A].balance).toBe(0)
+    expect(r.perMember[B].balance).toBe(0)
+    expect(r.transfer).toBe(null)
+  })
+
   it('no expenses, no transfer', () => {
     expect(computeSettlement({ members }).transfer).toBe(null)
   })

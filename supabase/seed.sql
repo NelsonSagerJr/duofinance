@@ -1,4 +1,5 @@
 -- Rode depois de criar os 2 usuários em Authentication > Users.
+-- As categorias padrão da casa são criadas pelo trigger de 0007_categories.sql.
 -- Troque os e-mails, nomes e o nome da casa abaixo (não faça commit com os dados reais).
 with h as (
   insert into public.households (name) values ('Nossa Casa') returning id

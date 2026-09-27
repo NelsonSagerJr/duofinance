@@ -8,15 +8,20 @@ export const state = reactive({
   session: null,
   household: null,
   members: [], // [{ user_id, household_id, name, default_share_pct }]
+  categories: [], // household list, see lib/categories.js
   month: currentMonth(), // 'YYYY-MM-01'
   version: 0, // bumped after every write
   form: { open: false, expense: null, defaults: {} }, // global ExpenseForm modal (rendered by AppLayout)
+  feedbackOpen: false, // global FeedbackModal (rendered by AppLayout)
   error: '', // session/household load error, shown on Login
 })
 
 export const me = computed(() => state.members.find((m) => m.user_id === state.session?.user?.id) || null)
 export const partner = computed(() => state.members.find((m) => m.user_id !== state.session?.user?.id) || null)
 export const memberName = (id) => state.members.find((m) => m.user_id === id)?.name || '—'
+// House expenses with paid_by null were split at the till (each paid their own part).
+export const SPLIT_AT_TILL = 'Dividido na hora'
+export const paidByLabel = (id) => (id ? memberName(id) : SPLIT_AT_TILL)
 
 const must = ({ data, error }) => {
   if (error) throw error
@@ -27,6 +32,15 @@ const changed = (data) => {
   return data
 }
 const hh = () => state.household.id
+// PostgREST caps a response at 1000 rows; the 12-month views can go past that, so page through.
+async function all(query) {
+  const rows = []
+  for (let from = 0; ; from += 1000) {
+    const page = must(await query().range(from, from + 999))
+    rows.push(...page)
+    if (page.length < 1000) return rows
+  }
+}
 
 // Opens the modal in AppLayout. expense = row to edit (or null to create); defaults = prefilled fields.
 export function openExpenseForm(expense = null, defaults = {}) {
@@ -41,12 +55,37 @@ async function loadHousehold() {
   if (!state.session) {
     state.members = []
     state.household = null
+    state.categories = []
     return
   }
   const mine = must(await supabase.from('members').select('*').eq('user_id', state.session.user.id).maybeSingle())
   if (!mine) throw new Error('Usuário sem casa cadastrada. Rode o supabase/seed.sql.')
   state.members = must(await supabase.from('members').select('*').order('name'))
   state.household = must(await supabase.from('households').select('*').eq('id', mine.household_id).single())
+  await loadCategories()
+}
+
+// ---- categories (shared by the household; lib/categories.js reads state.categories) ------------------------------
+export async function loadCategories() {
+  state.categories = must(await supabase.from('categories').select('*').order('sort').order('name'))
+}
+
+// c = { id?, kind, name, icon, color, archived? }. kind never changes after creation.
+export async function saveCategory({ id, kind, name, icon, color, archived = false }) {
+  if (id) must(await supabase.from('categories').update({ name, icon, color, archived }).eq('id', id))
+  else {
+    const sort = Math.max(-1, ...state.categories.filter((c) => c.kind === kind).map((c) => c.sort)) + 1
+    must(await supabase.from('categories').insert({ kind, name, icon, color, sort }))
+  }
+  await loadCategories()
+  changed()
+}
+
+// Moves the house rows and my own private rows to `toId`, then archives `fromId` (never deletes: see 0007).
+export async function moveCategory(fromId, toId) {
+  must(await supabase.rpc('move_category', { from_id: fromId, to_id: toId }))
+  await loadCategories()
+  changed()
 }
 
 let ready
@@ -93,14 +132,15 @@ export async function updateMember(patch) {
 // ---- expenses --------------------------------------------------------------
 // range = monthRange(month) -> { start, end } (end exclusive)
 export async function listExpenses({ start, end }) {
-  return must(
-    await supabase
+  return all(() =>
+    supabase
       .from('expenses')
       .select('*')
       .gte('spent_on', start)
       .lt('spent_on', end)
       .order('spent_on', { ascending: false })
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('id'),
   )
 }
 
@@ -135,7 +175,7 @@ export async function markBillPaid(bill, month, paidBy) {
   return addExpense({
     description: bill.name,
     amount_cents: bill.amount_cents,
-    category: bill.category,
+    category_id: bill.category_id,
     scope: 'house',
     paid_by: paidBy,
     spent_on: dueDate(month, bill.due_day),
@@ -170,4 +210,106 @@ export async function upsertGoal(goal) {
 // c = { goal_id, member_id, amount_cents, contributed_on? }
 export async function addContribution(c) {
   return changed(must(await supabase.from('goal_contributions').insert(c).select().single()))
+}
+
+// ---- Meu Espaço (private per user: RLS user_id = auth.uid(); user_id defaults to the caller) ----------------
+// range = { start, end } (end exclusive), e.g. { start: addMonths(month, -11), end: nextMonth(month) }
+export async function listIncomes({ start, end }) {
+  return all(() =>
+    supabase.from('incomes').select('*').gte('received_on', start).lt('received_on', end)
+      .order('received_on', { ascending: false }).order('created_at', { ascending: false }).order('id'),
+  )
+}
+
+// income = { id?, description, amount_cents, received_on, category_id }
+export async function upsertIncome(income) {
+  return changed(must(await supabase.from('incomes').upsert(income).select().single()))
+}
+
+export async function deleteIncome(id) {
+  changed(must(await supabase.from('incomes').delete().eq('id', id)))
+}
+
+export async function listRecurringIncomes() {
+  return must(await supabase.from('recurring_incomes').select('*').order('day').order('name'))
+}
+
+// r = { id?, name, amount_cents, day, category_id, active }
+export async function upsertRecurringIncome(r) {
+  return changed(must(await supabase.from('recurring_incomes').upsert(r).select().single()))
+}
+
+export async function deleteRecurringIncome(id) {
+  changed(must(await supabase.from('recurring_incomes').delete().eq('id', id)))
+}
+
+// Receiving a fixed income = an income tied to (recurring_income_id, income_month), dated on its day in that month.
+export async function markIncomeReceived(r, month) {
+  return upsertIncome({
+    description: r.name,
+    amount_cents: r.amount_cents,
+    category_id: r.category_id,
+    received_on: dueDate(month, r.day),
+    recurring_income_id: r.id,
+    income_month: month,
+  })
+}
+
+export async function listInvestments() {
+  return must(await supabase.from('investments').select('*').order('archived').order('name'))
+}
+
+// inv = { id?, name, kind, archived? }
+export async function upsertInvestment(inv) {
+  return changed(must(await supabase.from('investments').upsert(inv).select().single()))
+}
+
+export async function deleteInvestment(id) {
+  changed(must(await supabase.from('investments').delete().eq('id', id)))
+}
+
+// Every move (a balance needs the whole history); personal portfolios are small.
+export async function listMoves() {
+  return all(() => supabase.from('investment_moves').select('*').order('moved_on').order('created_at').order('id'))
+}
+
+// m = { investment_id, type: 'deposit'|'withdraw'|'balance', amount_cents, moved_on }
+export async function addMove(m) {
+  return changed(must(await supabase.from('investment_moves').insert(m).select().single()))
+}
+
+export async function deleteMove(id) {
+  changed(must(await supabase.from('investment_moves').delete().eq('id', id)))
+}
+
+export async function listBudgets() {
+  return must(await supabase.from('budgets').select('*'))
+}
+
+export async function upsertBudget(category_id, limit_cents) {
+  return changed(must(await supabase.from('budgets')
+    .upsert({ user_id: state.session.user.id, category_id, limit_cents }, { onConflict: 'user_id,category_id' }).select().single()))
+}
+
+export async function deleteBudget(category_id) {
+  changed(must(await supabase.from('budgets').delete().eq('category_id', category_id)))
+}
+
+// ---- feedback (shared by the household; 0006_feedback.sql) ------------------------------------------------------
+export async function listFeedback() {
+  return must(await supabase.from('feedback').select('*').order('created_at', { ascending: false }))
+}
+
+// f = { route, element?, kind: 'bug'|'improvement'|'missing', message }. household/user come from DB defaults.
+export async function addFeedback(f) {
+  return changed(must(await supabase.from('feedback').insert(f).select().single()))
+}
+
+export async function setFeedbackStatus(id, status) {
+  const resolved_at = status === 'resolved' ? new Date().toISOString() : null
+  return changed(must(await supabase.from('feedback').update({ status, resolved_at }).eq('id', id).select().single()))
+}
+
+export async function deleteFeedback(id) {
+  changed(must(await supabase.from('feedback').delete().eq('id', id)))
 }

@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { state, me, addExpense, updateExpense } from '../lib/store.js'
+import { state, me, addExpense, updateExpense, SPLIT_AT_TILL } from '../lib/store.js'
 import { parseBRL } from '../lib/money.js'
-import { CATEGORIES } from '../lib/categories.js'
+import { pickable } from '../lib/categories.js'
 import { todayISO, monthOf, daysInMonth, dueDate } from '../lib/month.js'
 
 // expense: row to edit (null = create). defaults: prefill for create, e.g. { scope: 'personal', owner_id }.
@@ -18,11 +18,13 @@ const today = todayISO()
 
 const description = ref(start.description || '')
 const amount = ref(start.amount_cents ? (start.amount_cents / 100).toFixed(2).replace('.', ',') : '')
-const category = ref(start.category || CATEGORIES[0].id)
+const categoryOptions = computed(() => pickable('expense', start.category_id))
+const category = ref(start.category_id || categoryOptions.value[0]?.id || '')
 const spentOn = ref(start.spent_on || (monthOf(today) === state.month ? today : state.month))
 const scope = ref(start.scope || 'house')
 // Personal = private to me (RLS enforces owner_id = paid_by = me), so only house expenses pick who paid.
-const paidBy = ref(start.scope === 'personal' ? myId : start.paid_by || myId)
+// null = "Dividido na hora": each paid their own part at the till (house only).
+const paidBy = ref(start.scope === 'personal' || !('paid_by' in start) ? myId : start.paid_by)
 const [first, second] = state.members
 // Each house expense keeps the split it was saved with (the DB fills in the default on insert),
 // so editing one shows and keeps its own split instead of the current default.
@@ -42,6 +44,7 @@ async function submit() {
   error.value = ''
   const amount_cents = parseBRL(amount.value)
   if (!amount_cents || amount_cents <= 0) return (error.value = 'Informe um valor válido, ex: 12,50')
+  if (!category.value) return (error.value = 'Escolha uma categoria (crie em Acerto & Metas → Categorias).')
   const pct = Number(firstPct.value)
   if (useOverride.value && !(pct >= 0 && pct <= 100)) return (error.value = 'Percentual deve ficar entre 0 e 100')
 
@@ -49,7 +52,7 @@ async function submit() {
   const row = {
     description: description.value.trim(),
     amount_cents,
-    category: category.value,
+    category_id: category.value,
     spent_on: spentOn.value,
     scope: scope.value,
     owner_id: house ? null : myId,
@@ -105,7 +108,7 @@ const chip = (on) =>
     <label class="flex flex-col gap-1">
       <span :class="label">Categoria</span>
       <select v-model="category" :class="input">
-        <option v-for="c in CATEGORIES" :key="c.id" :value="c.id">{{ c.label }}</option>
+        <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ c.name }}{{ c.archived ? ' (arquivada)' : '' }}</option>
       </select>
     </label>
 
@@ -116,11 +119,16 @@ const chip = (on) =>
 
     <fieldset v-else data-tour="paid-by" class="flex flex-col gap-1">
       <legend :class="label" class="mb-1">Quem pagou?</legend>
-      <div class="flex gap-space-sm">
+      <div class="grid grid-cols-2 gap-space-sm">
         <label v-for="m in state.members" :key="m.user_id" :class="chip(paidBy === m.user_id)">
-          <input v-model="paidBy" type="radio" :value="m.user_id" class="sr-only" />{{ m.name }}
+          <input v-model="paidBy" type="radio" :value="m.user_id" class="sr-only" /><span class="truncate">{{ m.name }}</span>
+        </label>
+        <label data-tour="split-at-till" :class="chip(paidBy === null)" class="col-span-2">
+          <input v-model="paidBy" type="radio" :value="null" class="sr-only" />
+          <span class="material-symbols-outlined text-[18px]">call_split</span><span class="truncate">{{ SPLIT_AT_TILL }}</span>
         </label>
       </div>
+      <p v-if="paidBy === null" class="text-body-sm text-on-surface-variant">Cada um pagou a própria parte no caixa. Conta no total da casa, mas não mexe no acerto.</p>
     </fieldset>
 
     <div v-if="scope === 'house' && second" data-tour="split" class="flex flex-col gap-space-sm rounded-lg bg-surface-container-low p-3">
