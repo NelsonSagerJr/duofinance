@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Color tokens as RGB channels so opacity modifiers (bg-primary/40) keep working. Names map 1:1 to tailwind.config.js. */
+@layer base {
+  :root {
+    color-scheme: light;
+    --c-surface: 250 248 255;
+    --c-surface-dim: 210 217 244;
+    --c-surface-bright: 250 248 255;
+    --c-surface-container-lowest: 255 255 255;
+    --c-surface-container-low: 242 243 255;
+    --c-surface-container: 234 237 255;
+    --c-surface-container-high: 226 231 255;
+    --c-surface-container-highest: 218 226 253;
+    --c-on-surface: 19 27 46;
+    --c-on-surface-variant: 61 73 71;
+    --c-inverse-surface: 40 48 68;
+    --c-inverse-on-surface: 238 240 255;
+    --c-outline: 109 122 119;
+    --c-outline-variant: 188 201 198;
+    --c-surface-tint: 0 106 97;
+    --c-primary: 0 104 95;
+    --c-on-primary: 255 255 255;
+    --c-primary-container: 0 131 120;
+    --c-on-primary-container: 244 255 252;
+    --c-inverse-primary: 107 216 203;
+    --c-secondary: 75 65 225;
+    --c-on-secondary: 255 255 255;
+    --c-secondary-container: 100 94 251;
+    --c-on-secondary-container: 255 251 255;
+    --c-tertiary: 185 5 56;
+    --c-on-tertiary: 255 255 255;
+    --c-tertiary-container: 220 44 79;
+    --c-on-tertiary-container: 255 251 255;
+    --c-error: 186 26 26;
+    --c-on-error: 255 255 255;
+    --c-error-container: 255 218 214;
+    --c-on-error-container: 147 0 10;
+    --c-primary-fixed: 137 245 231;
+    --c-primary-fixed-dim: 107 216 203;
+    --c-on-primary-fixed: 0 32 29;
+    --c-on-primary-fixed-variant: 0 80 73;
+    --c-secondary-fixed: 226 223 255;
+    --c-secondary-fixed-dim: 195 192 255;
+    --c-on-secondary-fixed: 15 0 105;
+    --c-on-secondary-fixed-variant: 51 35 204;
+    --c-tertiary-fixed: 255 218 219;
+    --c-tertiary-fixed-dim: 255 178 183;
+    --c-on-tertiary-fixed: 64 0 13;
+    --c-on-tertiary-fixed-variant: 146 0 42;
+    --c-background: 250 248 255;
+    --c-on-background: 19 27 46;
+    --c-surface-variant: 218 226 253;
+    --c-scrim: 40 48 68;
+  }
+
+  /* M3 dark scheme from the same seeds (teal #00685f, indigo #4b41e1, tertiary #b90538), blue-tinted surfaces.
+     Deviation: surface-container-lowest sits *above* surface so cards lift off the page, and the *-fixed
+     tokens become dark tints because the markup uses them as soft chip backgrounds under text-primary etc. */
+  .dark {
+    color-scheme: dark;
+    --c-surface: 15 20 32;
+    --c-surface-dim: 15 20 32;
+    --c-surface-bright: 53 59 76;
+    --c-surface-container-lowest: 22 27 40;
+    --c-surface-container-low: 27 33 48;
+    --c-surface-container: 31 37 53;
+    --c-surface-container-high: 37 44 60;
+    --c-surface-container-highest: 42 49 66;
+    --c-on-surface: 218 226 253;
+    --c-on-surface-variant: 188 201 198;
+    --c-inverse-surface: 218 226 253;
+    --c-inverse-on-surface: 40 48 68;
+    --c-outline: 134 148 143;
+    --c-outline-variant: 61 73 71;
+    --c-surface-tint: 107 216 203;
+    --c-primary: 107 216 203;
+    --c-on-primary: 0 55 51;
+    --c-primary-container: 0 80 73;
+    --c-on-primary-container: 137 245 231;
+    --c-inverse-primary: 0 104 95;
+    --c-secondary: 195 192 255;
+    --c-on-secondary: 29 0 165;
+    --c-secondary-container: 51 35 204;
+    --c-on-secondary-container: 226 223 255;
+    --c-tertiary: 255 178 183;
+    --c-on-tertiary: 103 0 27;
+    --c-tertiary-container: 146 0 42;
+    --c-on-tertiary-container: 255 218 219;
+    --c-error: 255 180 171;
+    --c-on-error: 105 0 5;
+    --c-error-container: 147 0 10;
+    --c-on-error-container: 255 218 214;
+    --c-primary-fixed: 0 62 57;
+    --c-primary-fixed-dim: 0 48 44;
+    --c-on-primary-fixed: 137 245 231;
+    --c-on-primary-fixed-variant: 107 216 203;
+    --c-secondary-fixed: 42 35 128;
+    --c-secondary-fixed-dim: 33 27 102;
+    --c-on-secondary-fixed: 226 223 255;
+    --c-on-secondary-fixed-variant: 195 192 255;
+    --c-tertiary-fixed: 92 0 25;
+    --c-tertiary-fixed-dim: 74 0 19;
+    --c-on-tertiary-fixed: 255 218 219;
+    --c-on-tertiary-fixed-variant: 255 178 183;
+    --c-background: 15 20 32;
+    --c-on-background: 218 226 253;
+    --c-surface-variant: 61 73 71;
+    --c-scrim: 0 0 0;
+  }
+}
+
+/* driver.js tour popover, themed with the app tokens (`.duo-tour` beats driver.css specificity). */
+.driver-popover.duo-tour {
+  --tour-bg: var(--c-surface-container-lowest);
+  background: rgb(var(--tour-bg));
+  color: rgb(var(--c-on-surface));
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border-radius: 0.75rem;
+  padding: 1rem 1.125rem;
+  max-width: min(340px, calc(100vw - 32px));
+  border: 1px solid rgb(var(--c-outline-variant));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+.dark .driver-popover.duo-tour { --tour-bg: var(--c-surface-container-high); border-color: rgb(var(--c-outline)); }
+.duo-tour .driver-popover-title { font-size: 17px; line-height: 24px; font-weight: 700; padding-right: 1.5rem; }
+.duo-tour .driver-popover-description { font-size: 14px; line-height: 21px; color: rgb(var(--c-on-surface-variant)); }
+.duo-tour .driver-popover-description b { color: rgb(var(--c-on-surface)); font-weight: 600; }
+.duo-tour .driver-popover-progress-text { color: rgb(var(--c-on-surface-variant)); font: 500 12px Inter, sans-serif; }
+.duo-tour .driver-popover-close-btn { color: rgb(var(--c-on-surface-variant)); width: 36px; height: 36px; font-size: 22px; }
+.duo-tour .driver-popover-close-btn:hover,
+.duo-tour .driver-popover-close-btn:focus-visible { color: rgb(var(--c-on-surface)); }
+.duo-tour .driver-popover-footer { margin-top: 1rem; gap: 0.5rem; }
+.duo-tour .driver-popover-footer button.driver-popover-footer-btn {
+  font: 600 13px/1 Inter, sans-serif;
+  text-shadow: none;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background: rgb(var(--c-surface-container-highest));
+  color: rgb(var(--c-on-surface));
+}
+.duo-tour .driver-popover-footer button.driver-popover-next-btn { background: rgb(var(--c-primary)); color: rgb(var(--c-on-primary)); }
+.duo-tour .driver-popover-footer button:hover { filter: brightness(1.08); }
+.duo-tour .driver-popover-footer button:focus-visible { outline: 2px solid rgb(var(--c-primary)); outline-offset: 2px; }
+.duo-tour .driver-popover-arrow { border-color: rgb(var(--tour-bg)); }
+.duo-tour .driver-popover-arrow-side-left { border-top-color: transparent; border-bottom-color: transparent; border-right-color: transparent; }
+.duo-tour .driver-popover-arrow-side-right { border-top-color: transparent; border-bottom-color: transparent; border-left-color: transparent; }
+.duo-tour .driver-popover-arrow-side-top { border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent; }
+.duo-tour .driver-popover-arrow-side-bottom { border-top-color: transparent; border-left-color: transparent; border-right-color: transparent; }
