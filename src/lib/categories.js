@@ -36,8 +36,8 @@ export const pickable = (kind, currentId = null) =>
   state.categories.filter((c) => c.kind === kind && (!c.archived || c.id === currentId))
 
 export const INVESTMENT_KINDS = [
-  { id: 'renda_fixa', label: 'Renda fixa', icon: 'account_balance' },
-  { id: 'acoes', label: 'Ações', icon: 'candlestick_chart' },
+  { id: 'renda_fixa', label: 'Renda fixa', hint: 'CDB, Tesouro, LCI/LCA, poupança', icon: 'account_balance' },
+  { id: 'acoes', label: 'Ações', hint: 'e ETFs', icon: 'candlestick_chart' },
   { id: 'fiis', label: 'FIIs', icon: 'apartment' },
   { id: 'cripto', label: 'Cripto', icon: 'currency_bitcoin' },
   { id: 'previdencia', label: 'Previdência', icon: 'elderly' },
