@@ -123,7 +123,7 @@ const actionBtn = 'inline-flex items-center gap-1 px-3 h-9 rounded-lg bg-surface
         </div>
         <div v-if="open.has(p.id)" class="rounded-lg bg-surface-container-low p-3">
           <p v-if="!movesOf(p.id).length" class="text-body-sm text-on-surface-variant">Nenhuma movimentação até o fim de {{ monthLabel(view.month) }}.</p>
-          <ul v-else class="flex flex-col divide-y divide-outline-variant/30">
+          <ul v-else class="flex flex-col divide-y divide-outline-variant/30 max-h-80 overflow-y-auto overscroll-contain">
             <li v-for="m in movesOf(p.id)" :key="m.id" class="flex items-center justify-between gap-2 py-2">
               <span class="flex items-center gap-2 min-w-0 text-body-sm">
                 <span class="material-symbols-outlined text-[18px] text-on-surface-variant">{{ MOVE[m.type].icon }}</span>

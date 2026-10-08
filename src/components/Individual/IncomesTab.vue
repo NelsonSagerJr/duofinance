@@ -134,7 +134,7 @@ const primaryBtn = 'inline-flex items-center justify-center gap-2 bg-primary hov
       </button>
     </div>
     <p v-if="!avulsas.length" class="px-6 pb-8 pt-2 text-center text-body-md text-on-surface-variant">Nenhuma entrada avulsa em {{ monthLabel(view.month) }}. Recebeu um extra? Lance em <b class="text-on-surface">Nova entrada</b>.</p>
-    <ul v-else class="divide-y divide-surface-container">
+    <ul v-else class="divide-y divide-surface-container max-h-[28rem] overflow-y-auto overscroll-contain">
       <li v-for="i in avulsas" :key="i.id" class="flex items-center justify-between gap-2 px-space-md md:px-6 py-3.5">
         <div class="flex items-center gap-3 min-w-0 flex-1">
           <div class="hidden sm:flex w-9 h-9 rounded-lg items-center justify-center shrink-0" :class="chipClass(categoryById(i.category_id))"><span class="material-symbols-outlined text-[20px]">{{ categoryById(i.category_id).icon }}</span></div>

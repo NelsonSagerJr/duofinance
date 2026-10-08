@@ -135,9 +135,9 @@ const dateBR = (d) => d.split('-').reverse().join('/')
       </div>
       <p v-if="loading" class="text-body-md text-on-surface-variant">Carregando…</p>
       <p v-else-if="!expenses.length" class="text-body-md text-on-surface-variant py-space-md">Nenhuma despesa da casa neste mês.</p>
-      <div v-else class="relative overflow-x-auto -mx-space-lg px-space-lg">
+      <div v-else class="relative overflow-auto max-h-[32rem] overscroll-contain -mx-space-lg px-space-lg">
         <table class="w-full min-w-[640px] text-left">
-          <thead class="bg-surface-container-low">
+          <thead class="bg-surface-container-low sticky top-0 z-10">
             <tr class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               <th class="px-3 py-3">Data</th>
               <th class="px-3 py-3">Descrição</th>
