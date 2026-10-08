@@ -9,7 +9,7 @@ export const state = reactive({
   household: null,
   members: [], // [{ user_id, household_id, name, default_share_pct }]
   categories: [], // household list, see lib/categories.js
-  cards: [], // my private credit cards (0010)
+  cards: [], // credit cards of both members (0011: household reads, owner writes)
   month: currentMonth(), // 'YYYY-MM-01'
   version: 0, // bumped after every write
   form: { open: false, expense: null, defaults: {} }, // global ExpenseForm modal (rendered by AppLayout)
@@ -192,8 +192,9 @@ export async function loadCards() {
   state.cards = state.session ? must(await supabase.from('cards').select('*').order('archived').order('name')) : []
 }
 
-// card = { id?, name, closing_day, archived? }
+// card = { id?, name, closing_day, is_default? }. One default per user: clear the old one first (unique index).
 export async function upsertCard(card) {
+  if (card.is_default) must(await supabase.from('cards').update({ is_default: false }).eq('user_id', state.session.user.id).eq('is_default', true))
   must(await supabase.from('cards').upsert(card))
   await loadCards()
   changed()
@@ -206,20 +207,23 @@ export async function deleteCard(id) {
   changed()
 }
 
-// My tags: [{ expense_id, card_id }]. Personal use only, small.
+// Tags I can see: [{ expense_id, user_id, card_id }] (user_id = card owner). Mine anywhere + both on house expenses.
 export async function listExpenseCards() {
-  return all(() => supabase.from('expense_cards').select('expense_id, card_id').order('expense_id'))
+  return all(() => supabase.from('expense_cards').select('expense_id, user_id, card_id').order('expense_id').order('user_id'))
 }
 
-export async function getExpenseCard(expenseId) {
-  return must(await supabase.from('expense_cards').select('card_id').eq('expense_id', expenseId).maybeSingle())?.card_id || ''
+// { [user_id]: card_id } for one expense.
+export async function getExpenseCards(expenseId) {
+  const rows = must(await supabase.from('expense_cards').select('user_id, card_id').eq('expense_id', expenseId))
+  return Object.fromEntries(rows.map((r) => [r.user_id, r.card_id]))
 }
 
-// Tags expenseIds with my card (cardId null = untag).
-export async function setExpenseCard(expenseIds, cardId) {
-  const uid = state.session.user.id
-  must(await supabase.from('expense_cards').delete().eq('user_id', uid).in('expense_id', expenseIds))
-  if (cardId) must(await supabase.from('expense_cards').insert(expenseIds.map((expense_id) => ({ expense_id, card_id: cardId }))))
+// Replaces the tags of expenseIds with byUser = { [user_id]: card_id } (empty card_id = no card, e.g. cash).
+export async function setExpenseCards(expenseIds, byUser) {
+  must(await supabase.from('expense_cards').delete().in('expense_id', expenseIds))
+  const rows = Object.entries(byUser).filter(([, card]) => card)
+    .flatMap(([user_id, card_id]) => expenseIds.map((expense_id) => ({ expense_id, user_id, card_id })))
+  if (rows.length) must(await supabase.from('expense_cards').insert(rows))
   changed()
 }
 

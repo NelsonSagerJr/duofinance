@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { state, upsertCard, deleteCard } from '../../lib/store.js'
+import { state, me, upsertCard, deleteCard } from '../../lib/store.js'
 import { formatBRL } from '../../lib/money.js'
 import { addMonths, dueDate } from '../../lib/month.js'
 import { invoiceMonth, cardAmount } from '../../lib/cards.js'
@@ -12,9 +12,9 @@ const props = defineProps({ view: { type: Object, required: true } })
 // Per card: the invoice closing in the chosen month and the next (still open) one.
 const cards = computed(() => {
   const { month, expenses, expenseCards, members, meId } = props.view
-  const tag = new Map(expenseCards.map((t) => [t.expense_id, t.card_id]))
+  const tag = new Map(expenseCards.filter((t) => t.user_id === meId).map((t) => [t.expense_id, t.card_id]))
   const months = [month, addMonths(month, 1)]
-  return state.cards.filter((c) => !c.archived).map((c) => {
+  return state.cards.filter((c) => c.user_id === me.value?.user_id && !c.archived).map((c) => {
     const totals = [0, 0]
     for (const e of expenses) {
       if (tag.get(e.id) !== c.id) continue
@@ -62,10 +62,10 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
       <div>
         <h3 class="font-headline-sm text-headline-sm text-on-surface">Faturas dos cartões</h3>
-        <p class="font-body-sm text-body-sm text-on-surface-variant">Compras a partir do dia de fechamento vão para a fatura seguinte. Na casa dividida na hora, entra só a sua parte.</p>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Compras a partir do dia de fechamento vão para a fatura seguinte. Na casa dividida na hora, entra só a sua parte. O nome dos cartões aparece para a casa, para marcar quem pagou.</p>
       </div>
       <button type="button" class="inline-flex items-center justify-center gap-2 bg-surface-container-high text-on-surface font-label-lg text-label-lg px-4 py-2.5 rounded-lg shrink-0"
-        @click="editing = { name: '', closing_day: 1 }">
+        @click="editing = { name: '', closing_day: 1, is_default: !cards.length }">
         <span class="material-symbols-outlined text-[18px]">add_card</span>Novo cartão
       </button>
     </div>
@@ -75,6 +75,7 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-[20px] text-primary">credit_card</span>
           <span class="flex-1 min-w-0 truncate font-label-lg text-label-lg text-on-surface">{{ c.name }}</span>
+          <span v-if="c.is_default" class="font-label-sm text-label-sm text-primary bg-primary-fixed/60 px-2 py-0.5 rounded-full">Padrão</span>
           <button type="button" :class="iconBtn" :aria-label="`Editar ${c.name}`" title="Editar" @click="editing = { ...c }"><span class="material-symbols-outlined text-[18px]">edit</span></button>
           <button type="button" :class="iconBtn" :aria-label="`Excluir ${c.name}`" title="Excluir" @click="remove(c)"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </div>
@@ -96,6 +97,10 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
         <label class="flex flex-col gap-1">
           <span :class="label">Dia de fechamento da fatura</span>
           <input v-model="editing.closing_day" type="number" min="1" max="31" required :class="input" />
+        </label>
+        <label class="flex items-center gap-2 text-body-sm text-on-surface cursor-pointer">
+          <input v-model="editing.is_default" type="checkbox" class="w-4 h-4 accent-primary" />
+          Cartão padrão (já vem selecionado nos lançamentos)
         </label>
         <p v-if="error" role="alert" class="rounded-lg bg-error-container text-on-error-container px-3 py-2 text-body-sm">{{ error }}</p>
         <div class="flex gap-space-sm justify-end">

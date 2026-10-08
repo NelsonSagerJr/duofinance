@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { state, me, addExpense, addExpenses, updateExpense, updateInstallmentGroup, getExpenseCard, setExpenseCard, SPLIT_AT_TILL } from '../lib/store.js'
+import { ref, reactive, computed } from 'vue'
+import { state, me, addExpense, addExpenses, updateExpense, updateInstallmentGroup, getExpenseCards, setExpenseCards, SPLIT_AT_TILL } from '../lib/store.js'
 import { splitInstallments, installmentDate } from '../lib/cards.js'
 import { parseBRL } from '../lib/money.js'
 import { pickable } from '../lib/categories.js'
@@ -38,11 +38,16 @@ const billMonth = start.fixed_bill_id ? start.bill_month : null
 const dateMin = billMonth
 const dateMax = billMonth && dueDate(billMonth, daysInMonth(billMonth))
 
-// My card (private tag): only when the money left my pocket, i.e. personal, paid by me or split at the till.
-const cards = computed(() => state.cards.filter((c) => !c.archived || c.id === card.value))
-const card = ref('')
-if (props.expense) getExpenseCard(props.expense.id).then((id) => (card.value = id)).catch(() => {})
-const showCard = computed(() => cards.value.length && (scope.value === 'personal' || paidBy.value === myId || paidBy.value === null))
+// Card of whoever paid: personal = mine; house = the payer's; split at the till = one per member ('' = cash / none).
+// New entries start on each member's default card; editing loads the saved tags.
+const cardsOf = (uid) => state.cards.filter((c) => c.user_id === uid)
+const cardBy = reactive(props.expense ? {} : Object.fromEntries(state.members.map((m) => [m.user_id, cardsOf(m.user_id).find((c) => c.is_default)?.id || ''])))
+if (props.expense) getExpenseCards(props.expense.id).then((t) => Object.assign(cardBy, t)).catch(() => {})
+const payers = computed(() => {
+  const ids = scope.value === 'personal' ? [myId] : paidBy.value === null ? state.members.map((m) => m.user_id) : [paidBy.value]
+  // House shows the payer's select even without cards (empty); personal only when I have cards.
+  return state.members.filter((m) => ids.includes(m.user_id) && (scope.value === 'house' || cardsOf(m.user_id).length))
+})
 // Installments: personal purchases only, set on creation (one row per month).
 const installments = ref(1)
 const group = props.expense?.installment_group
@@ -84,7 +89,8 @@ async function submit() {
       }))
       ids = (saved = await addExpenses(rows)).map((r) => r.id)
     } else ids = [(saved = await addExpense(row)).id]
-    if (card.value || props.expense) await setExpenseCard(ids, showCard.value ? card.value : null)
+    const byUser = Object.fromEntries(payers.value.map((m) => [m.user_id, cardBy[m.user_id] || '']))
+    if (props.expense || Object.values(byUser).some(Boolean)) await setExpenseCards(ids, byUser)
     emit('saved', saved)
   } catch (e) {
     error.value = e.message
@@ -135,15 +141,15 @@ const chip = (on) =>
       </select>
     </label>
 
-    <div v-if="showCard || (scope === 'personal' && !expense)" class="grid grid-cols-2 gap-space-sm">
-      <label v-if="showCard" class="flex flex-col gap-1" :class="{ 'col-span-2': scope !== 'personal' || expense }">
-        <span :class="label">{{ scope === 'house' && paidBy === null ? 'Seu cartão' : 'Cartão' }}</span>
-        <select v-model="card" :class="input">
-          <option value="">Nenhum</option>
-          <option v-for="c in cards" :key="c.id" :value="c.id">{{ c.name }}</option>
+    <div v-if="scope === 'personal' && (payers.length || !expense)" class="grid grid-cols-2 gap-space-sm">
+      <label v-for="m in payers" :key="m.user_id" class="flex flex-col gap-1 min-w-0" :class="{ 'col-span-2': expense }">
+        <span :class="label" class="truncate">Cartão</span>
+        <select v-model="cardBy[m.user_id]" :class="input">
+          <option value="">Nenhum / dinheiro</option>
+          <option v-for="c in cardsOf(m.user_id)" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
       </label>
-      <label v-if="scope === 'personal' && !expense" class="flex flex-col gap-1" :class="{ 'col-span-2': !showCard }">
+      <label v-if="!expense" class="flex flex-col gap-1" :class="{ 'col-span-2': !payers.length }">
         <span :class="label">Parcelas</span>
         <input v-model="installments" type="number" min="1" max="48" required :class="input" />
       </label>
@@ -167,6 +173,15 @@ const chip = (on) =>
         </label>
       </div>
       <p v-if="paidBy === null" class="text-body-sm text-on-surface-variant">Cada um pagou a própria parte no caixa. Conta no total da casa, mas não mexe no acerto.</p>
+      <div class="grid gap-space-sm mt-space-sm" :class="payers.length > 1 ? 'grid-cols-2' : 'grid-cols-1'">
+        <label v-for="m in payers" :key="m.user_id" class="flex flex-col gap-1 min-w-0">
+          <span :class="label" class="truncate">Cartão de {{ m.name }}</span>
+          <select v-model="cardBy[m.user_id]" :disabled="!cardsOf(m.user_id).length" :class="input" class="disabled:opacity-60">
+            <option value="">{{ cardsOf(m.user_id).length ? 'Nenhum / dinheiro' : 'Nenhum cartão cadastrado' }}</option>
+            <option v-for="c in cardsOf(m.user_id)" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+        </label>
+      </div>
     </fieldset>
 
     <div v-if="scope === 'house' && second" data-tour="split" class="flex flex-col gap-space-sm rounded-lg bg-surface-container-low p-3">
