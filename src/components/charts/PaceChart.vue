@@ -56,7 +56,7 @@ const dotY = computed(() => tip.value && (tip.value.cur ?? tip.value.proj))
 <template>
   <figure class="flex flex-col gap-space-sm m-0">
     <div ref="box" class="relative w-full">
-      <svg v-if="width" :width="width" :height="H + AXIS" class="block overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+      <svg v-if="width" :width="width" :height="H + AXIS" :viewBox="`0 0 ${width} ${H + AXIS}`" style="max-width:100%;height:auto" class="block overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
         role="img" tabindex="0" :aria-label="`Gasto acumulado por dia: ${formatBRL(cur[cur.length - 1])} até o dia ${cur.length}. Use as setas para ver cada dia.`"
         @pointermove="track" @pointerdown="track" @pointerleave="$event.pointerType === 'mouse' && (active = null)" @keydown="key" @blur="active = null">
         <defs>

@@ -140,7 +140,7 @@ const card = 'glass'
   </div>
 
   <template v-else>
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md md:gap-space-lg items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md md:gap-space-lg">
       <!-- Hero: house total + pace of the month -->
       <section data-tour="stat-house" :class="card" class="lg:col-span-12 lg:grid lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:gap-space-xl lg:items-end">
         <div class="flex flex-col gap-2 min-w-0">
@@ -171,81 +171,84 @@ const card = 'glass'
       </section>
 
       <!-- Settlement -->
-      <section data-tour="overview-acerto" :class="card" class="glass-accent lg:col-span-4">
-        <div class="flex items-center justify-between gap-2">
-          <span class="eyebrow">Acerto do mês</span>
-          <RouterLink to="/acerto" class="text-label-md text-primary hover:underline font-semibold flex items-center gap-1 shrink-0">
-            Detalhes <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-          </RouterLink>
-        </div>
-        <template v-if="settlement.transfer">
-          <div class="flex items-center gap-3" aria-hidden="true">
-            <span class="w-11 h-11 rounded-full grid place-items-center font-bold bg-tertiary/15 text-tertiary">{{ initial(settlement.transfer.from_id) }}</span>
-            <span class="flex-1 h-0.5 rounded bg-gradient-to-r from-tertiary to-chart-worth relative after:absolute after:-right-0.5 after:-top-[4px] after:border-l-8 after:border-l-chart-worth after:border-y-[5px] after:border-y-transparent"></span>
-            <span class="w-11 h-11 rounded-full grid place-items-center font-bold bg-chart-worth/15 text-chart-worth">{{ initial(settlement.transfer.to_id) }}</span>
+      <!-- Acerto + contas/pessoais stacked: same height as the category donut -->
+      <div class="lg:col-span-7 flex flex-col gap-space-md md:gap-space-lg min-w-0">
+        <section data-tour="overview-acerto" :class="card" class="glass-accent flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="eyebrow">Acerto do mês</span>
+            <RouterLink to="/acerto" class="text-label-md text-primary hover:underline font-semibold flex items-center gap-1 shrink-0">
+              Detalhes <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </RouterLink>
           </div>
-          <span class="big-num !text-[32px]">{{ formatBRL(settlement.transfer.amount_cents) }}</span>
-          <p class="text-body-md text-on-surface-variant">{{ memberName(settlement.transfer.from_id) }} transfere para {{ memberName(settlement.transfer.to_id) }}</p>
-        </template>
-        <p v-else-if="settlement.total" class="text-body-md text-on-surface">Contas do mês equilibradas. Ninguém deve nada.</p>
-        <p v-else class="text-body-md text-on-surface-variant">Sem despesas da casa neste mês.</p>
-        <div v-if="paidSplit.length">
-          <div class="flex justify-between gap-2 text-body-sm text-on-surface-variant mb-1.5">
-            <span>Quem pagou</span>
-            <span class="tabular-nums">{{ paidSplit.map((m) => `${m.name} ${m.pct}%`).join(' · ') }}</span>
+          <template v-if="settlement.transfer">
+            <div class="flex items-center gap-3" aria-hidden="true">
+              <span class="w-11 h-11 rounded-full grid place-items-center font-bold bg-tertiary/15 text-tertiary">{{ initial(settlement.transfer.from_id) }}</span>
+              <span class="flex-1 h-0.5 rounded bg-gradient-to-r from-tertiary to-chart-worth relative after:absolute after:-right-0.5 after:-top-[4px] after:border-l-8 after:border-l-chart-worth after:border-y-[5px] after:border-y-transparent"></span>
+              <span class="w-11 h-11 rounded-full grid place-items-center font-bold bg-chart-worth/15 text-chart-worth">{{ initial(settlement.transfer.to_id) }}</span>
+            </div>
+            <span class="big-num !text-[32px]">{{ formatBRL(settlement.transfer.amount_cents) }}</span>
+            <p class="text-body-md text-on-surface-variant">{{ memberName(settlement.transfer.from_id) }} transfere para {{ memberName(settlement.transfer.to_id) }}</p>
+          </template>
+          <p v-else-if="settlement.total" class="text-body-md text-on-surface">Contas do mês equilibradas. Ninguém deve nada.</p>
+          <p v-else class="text-body-md text-on-surface-variant">Sem despesas da casa neste mês.</p>
+          <div v-if="paidSplit.length">
+            <div class="flex justify-between gap-2 text-body-sm text-on-surface-variant mb-1.5">
+              <span>Quem pagou</span>
+              <span class="tabular-nums">{{ paidSplit.map((m) => `${m.name} ${m.pct}%`).join(' · ') }}</span>
+            </div>
+            <div class="h-2 rounded-full bg-surface-container-highest overflow-hidden flex gap-0.5" role="img" :aria-label="paidSplit.map((m) => `${m.name} pagou ${formatBRL(m.cents)}`).join('; ')">
+              <div v-for="(m, k) in paidSplit" :key="m.user_id" :style="{ width: m.pct + '%' }" :class="k ? 'bg-tertiary' : 'bg-chart-worth'" :title="`${m.name} pagou ${formatBRL(m.cents)}`"></div>
+            </div>
           </div>
-          <div class="h-2 rounded-full bg-surface-container-highest overflow-hidden flex gap-0.5" role="img" :aria-label="paidSplit.map((m) => `${m.name} pagou ${formatBRL(m.cents)}`).join('; ')">
-            <div v-for="(m, k) in paidSplit" :key="m.user_id" :style="{ width: m.pct + '%' }" :class="k ? 'bg-tertiary' : 'bg-chart-worth'" :title="`${m.name} pagou ${formatBRL(m.cents)}`"></div>
+          <p v-if="settlement.settled" class="text-body-sm text-on-surface-variant">Já quitado neste mês: {{ formatBRL(settlement.settled) }}</p>
+        </section>
+        <section data-tour="overview-upcoming" :class="card" class="flex-1">
+          <div data-tour="stat-bills" class="flex flex-col gap-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="eyebrow">Contas fixas</span>
+              <RouterLink to="/fixos" class="text-label-md text-primary hover:underline font-semibold shrink-0">Ver todas ({{ billRows.length }})</RouterLink>
+            </div>
+            <span class="font-numeric-stat text-numeric-stat text-on-surface tabular-nums">{{ formatBRL(sum(paidBills)) }}</span>
+            <p v-if="!billRows.length" class="text-body-sm text-on-surface-variant">
+              Nenhuma conta fixa cadastrada. <RouterLink to="/fixos" class="text-primary font-semibold hover:underline">Cadastrar</RouterLink>
+            </p>
+            <template v-else>
+              <span class="text-body-sm text-on-surface-variant">{{ paidBills.length }} de {{ billRows.length }} pagas</span>
+              <p v-if="!pendingBills.length" class="text-body-sm text-primary font-semibold">Todas as contas do mês estão pagas.</p>
+              <ul v-else class="flex flex-col mt-1">
+                <li v-for="b in pendingBills.slice(0, 5)" :key="b.id" class="flex items-center justify-between gap-3 py-1.5">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="chipClass(categoryById(b.category_id))">
+                      <span class="material-symbols-outlined text-[18px]">{{ categoryById(b.category_id).icon }}</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                      <span class="font-label-lg text-label-lg text-on-surface truncate">{{ b.name }}</span>
+                      <span class="font-body-sm text-body-sm" :class="b.overdue ? 'text-tertiary font-semibold' : 'text-on-surface-variant'">{{ b.overdue ? 'Venceu' : 'Vence' }} {{ ddmm(b.due) }}</span>
+                    </div>
+                  </div>
+                  <span class="font-label-lg text-label-lg text-on-surface whitespace-nowrap tabular-nums">{{ formatBRL(b.amount_cents) }}</span>
+                </li>
+              </ul>
+            </template>
           </div>
-        </div>
-        <p v-if="settlement.settled" class="text-body-sm text-on-surface-variant">Já quitado neste mês: {{ formatBRL(settlement.settled) }}</p>
-      </section>
+          <div data-tour="stat-personal" data-private class="flex flex-col gap-1 pt-space-md border-t border-outline-variant/30">
+            <div class="flex items-center justify-between gap-2">
+              <span class="eyebrow">Meus gastos pessoais</span>
+              <span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-chart-worth/10 text-chart-worth flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span>privado</span>
+            </div>
+            <span class="font-numeric-stat text-numeric-stat text-on-surface tabular-nums">{{ formatBRL(myPersonal) }}</span>
+            <span class="text-body-sm text-on-surface-variant">Fora do acerto. Só você vê.</span>
+          </div>
+        </section>
+      </div>
 
       <!-- By category -->
-      <section :class="card" class="lg:col-span-4">
+
+      <!-- Bills + my personal total -->
+      <section :class="card" class="lg:col-span-5">
         <span class="eyebrow">Por categoria</span>
         <DonutChart v-if="byCategory.length" :rows="byCategory" :sub="`casa · ${short(loadedMonth).slice(0, 3)}`" />
         <p v-else class="text-body-md text-on-surface-variant">Sem despesas da casa neste mês.</p>
-      </section>
-
-      <!-- Bills + my personal total -->
-      <section data-tour="overview-upcoming" :class="card" class="lg:col-span-4">
-        <div data-tour="stat-bills" class="flex flex-col gap-1">
-          <div class="flex items-center justify-between gap-2">
-            <span class="eyebrow">Contas fixas</span>
-            <RouterLink to="/fixos" class="text-label-md text-primary hover:underline font-semibold shrink-0">Ver todas ({{ billRows.length }})</RouterLink>
-          </div>
-          <span class="font-numeric-stat text-numeric-stat text-on-surface tabular-nums">{{ formatBRL(sum(paidBills)) }}</span>
-          <p v-if="!billRows.length" class="text-body-sm text-on-surface-variant">
-            Nenhuma conta fixa cadastrada. <RouterLink to="/fixos" class="text-primary font-semibold hover:underline">Cadastrar</RouterLink>
-          </p>
-          <template v-else>
-            <span class="text-body-sm text-on-surface-variant">{{ paidBills.length }} de {{ billRows.length }} pagas</span>
-            <p v-if="!pendingBills.length" class="text-body-sm text-primary font-semibold">Todas as contas do mês estão pagas.</p>
-            <ul v-else class="flex flex-col mt-1">
-              <li v-for="b in pendingBills.slice(0, 5)" :key="b.id" class="flex items-center justify-between gap-3 py-1.5">
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="chipClass(categoryById(b.category_id))">
-                    <span class="material-symbols-outlined text-[18px]">{{ categoryById(b.category_id).icon }}</span>
-                  </div>
-                  <div class="flex flex-col min-w-0">
-                    <span class="font-label-lg text-label-lg text-on-surface truncate">{{ b.name }}</span>
-                    <span class="font-body-sm text-body-sm" :class="b.overdue ? 'text-tertiary font-semibold' : 'text-on-surface-variant'">{{ b.overdue ? 'Venceu' : 'Vence' }} {{ ddmm(b.due) }}</span>
-                  </div>
-                </div>
-                <span class="font-label-lg text-label-lg text-on-surface whitespace-nowrap tabular-nums">{{ formatBRL(b.amount_cents) }}</span>
-              </li>
-            </ul>
-          </template>
-        </div>
-        <div data-tour="stat-personal" data-private class="flex flex-col gap-1 pt-space-md border-t border-outline-variant/30">
-          <div class="flex items-center justify-between gap-2">
-            <span class="eyebrow">Meus gastos pessoais</span>
-            <span class="px-2 py-0.5 rounded-full font-label-sm text-label-sm bg-chart-worth/10 text-chart-worth flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock</span>privado</span>
-          </div>
-          <span class="font-numeric-stat text-numeric-stat text-on-surface tabular-nums">{{ formatBRL(myPersonal) }}</span>
-          <span class="text-body-sm text-on-surface-variant">Fora do acerto. Só você vê.</span>
-        </div>
       </section>
 
       <!-- Recent activity -->
@@ -299,7 +302,7 @@ const card = 'glass'
         </section>
 
         <!-- Quick add -->
-        <section data-tour="quick-add" :class="card">
+        <section data-tour="quick-add" :class="card" class="flex-1">
           <h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">add_circle</span> Lançamento rápido
           </h2>
