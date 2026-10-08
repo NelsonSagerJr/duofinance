@@ -57,7 +57,7 @@ const aria = (r) => `${longMonth(r.month)}: entradas ${formatBRL(r.entradas)}, s
     </div>
 
     <div ref="box" class="relative w-full" @pointerleave="$event.pointerType === 'mouse' && (active = null)">
-      <svg v-if="width" :width="width" :height="H + AXIS" role="img" :aria-label="`Entradas, saídas e sobra de ${longMonth(rows[0].month)} a ${longMonth(last.month)}`" class="block overflow-visible">
+      <svg v-if="width" :width="width" :height="H + AXIS" :viewBox="`0 0 ${width} ${H + AXIS}`" style="max-width:100%;height:auto" role="img" :aria-label="`Entradas, saídas e sobra de ${longMonth(rows[0].month)} a ${longMonth(last.month)}`" class="block overflow-visible">
         <g class="font-label-sm text-[11px]">
           <template v-for="t in ticks" :key="t">
             <line :x1="LEFT" :x2="width" :y1="y(t)" :y2="y(t)" class="stroke-outline-variant" :class="t === 0 ? 'opacity-100' : 'opacity-40'" stroke-width="1" shape-rendering="crispEdges" />

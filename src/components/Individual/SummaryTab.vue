@@ -103,7 +103,7 @@ const card = 'glass'
     </button>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md md:gap-space-lg items-start">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md md:gap-space-lg">
     <!-- Hero: sobra, savings ring, in/out/invested -->
     <section data-tour="my-kpis" :class="card" class="lg:col-span-12">
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-space-lg">

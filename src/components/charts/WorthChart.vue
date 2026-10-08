@@ -51,7 +51,7 @@ const tip = computed(() => {
 <template>
   <figure class="flex flex-col gap-space-sm m-0">
     <div ref="box" class="relative w-full">
-      <svg v-if="width" :width="width" :height="H + AXIS" class="block overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+      <svg v-if="width" :width="width" :height="H + AXIS" :viewBox="`0 0 ${width} ${H + AXIS}`" style="max-width:100%;height:auto" class="block overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
         role="img" tabindex="0" :aria-label="`Patrimônio de ${longMonth(first.month)} a ${longMonth(last.month)}: de ${formatBRL(first.patrimonio)} para ${formatBRL(last.patrimonio)}. Use as setas para ver cada mês.`"
         @pointermove="track" @pointerdown="track" @pointerleave="$event.pointerType === 'mouse' && (active = null)" @keydown="key" @blur="active = null">
         <g class="font-label-sm text-[11px]">
