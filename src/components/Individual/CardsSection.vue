@@ -96,7 +96,7 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
               <span class="font-label-lg text-label-lg text-on-surface">{{ formatBRL(inv.cents) }}</span>
             </summary>
             <p v-if="!inv.items.length" class="mt-2 text-body-sm text-on-surface-variant">Nenhum lançamento.</p>
-            <ul v-else class="mt-2 flex flex-col divide-y divide-surface-container">
+            <ul v-else class="mt-2 flex flex-col divide-y divide-surface-container max-h-80 overflow-y-auto overscroll-contain">
               <li v-for="i in inv.items" :key="i.id" class="flex items-baseline gap-2 py-1.5 text-body-sm">
                 <span class="text-on-surface-variant whitespace-nowrap">{{ dm(i.date) }}</span>
                 <span class="flex-1 min-w-0 truncate text-on-surface">{{ i.label }}</span>

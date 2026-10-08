@@ -91,7 +91,7 @@ async function remove(e) {
     <p v-if="!mine.length" class="py-space-xl text-center text-on-surface-variant font-body-md text-body-md">
       Nenhum gasto pessoal seu neste mês. Academia, roupa, presente… lance em <b class="text-on-surface">Adicionar gasto pessoal</b>.
     </p>
-    <ul v-else data-tour="personal-list" class="flex flex-col">
+    <ul v-else data-tour="personal-list" class="flex flex-col max-h-[28rem] overflow-y-auto overscroll-contain">
       <li v-for="e in mine" :key="e.id" class="flex items-center justify-between gap-2 py-3.5 px-2 hover:bg-surface-container-low rounded-lg transition-colors">
         <div class="flex items-center gap-space-md min-w-0 flex-1">
           <div class="hidden sm:flex w-10 h-10 rounded-xl items-center justify-center shrink-0" :class="chipClass(categoryById(e.category_id))">
@@ -128,7 +128,7 @@ async function remove(e) {
       <p class="font-headline-md text-headline-md text-on-surface whitespace-nowrap">{{ formatBRL(view.metrics.house) }}</p>
     </div>
     <p v-if="!house.length" class="text-body-md text-on-surface-variant">Nenhuma despesa da casa neste mês.</p>
-    <ul v-else class="flex flex-col divide-y divide-surface-container">
+    <ul v-else class="flex flex-col divide-y divide-surface-container max-h-[28rem] overflow-y-auto overscroll-contain">
       <li v-for="e in house" :key="e.id" class="flex items-center justify-between gap-2 py-3 px-2">
         <div class="flex flex-col min-w-0">
           <span class="font-body-md text-body-md text-on-surface truncate">{{ e.description }}</span>
