@@ -76,7 +76,7 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
           <span class="material-symbols-outlined text-[20px] text-primary">credit_card</span>
           <span class="flex-1 min-w-0 truncate font-label-lg text-label-lg text-on-surface">{{ c.name }}</span>
           <span v-if="c.is_default" class="font-label-sm text-label-sm text-primary bg-primary-fixed/60 px-2 py-0.5 rounded-full">Padrão</span>
-          <button type="button" :class="iconBtn" :aria-label="`Editar ${c.name}`" title="Editar" @click="editing = { ...c }"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+          <button type="button" :class="iconBtn" :aria-label="`Editar ${c.name}`" title="Editar" @click="editing = { id: c.id, name: c.name, closing_day: c.closing_day, is_default: c.is_default }"><span class="material-symbols-outlined text-[18px]">edit</span></button>
           <button type="button" :class="iconBtn" :aria-label="`Excluir ${c.name}`" title="Excluir" @click="remove(c)"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </div>
         <div class="grid grid-cols-2 gap-space-sm">
