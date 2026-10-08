@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { state, memberName, paidByLabel, listExpenses, listSettlements, addSettlement, deleteExpense, openExpenseForm } from '../lib/store.js'
-import { computeSettlement } from '../lib/settlement.js'
+import { computeSettlement, dueByMember } from '../lib/settlement.js'
 import { formatBRL } from '../lib/money.js'
 import { categoryById, chipClass } from '../lib/categories.js'
 import { monthRange, monthLabel } from '../lib/month.js'
@@ -158,7 +158,10 @@ const dateBR = (d) => d.split('-').reverse().join('/')
                 </span>
               </td>
               <td class="px-3 py-3 font-label-md text-label-md whitespace-nowrap" :class="{ 'text-on-surface-variant': !e.paid_by }">{{ paidByLabel(e.paid_by) }}</td>
-              <td class="px-3 py-3 whitespace-nowrap text-on-surface-variant">{{ split(e) }}%</td>
+              <td class="px-3 py-3 whitespace-nowrap text-on-surface-variant">
+                {{ split(e) }}%
+                <div class="font-label-sm text-label-sm" :title="state.members.map((m) => m.name).join(' / ')">{{ state.members.map((m) => formatBRL(dueByMember(e, state.members)[m.user_id] ?? 0)).join(' / ') }}</div>
+              </td>
               <td class="px-3 py-3 text-right whitespace-nowrap font-semibold">{{ formatBRL(e.amount_cents) }}</td>
               <td class="px-3 py-3 whitespace-nowrap text-right">
                 <button type="button" aria-label="Editar" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant" title="Editar" @click="openExpenseForm(e)">
