@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { state, me, addExpense, updateExpense, SPLIT_AT_TILL } from '../lib/store.js'
+import { state, me, addExpense, addExpenses, updateExpense, updateInstallmentGroup, getExpenseCard, setExpenseCard, SPLIT_AT_TILL } from '../lib/store.js'
+import { splitInstallments, installmentDate } from '../lib/cards.js'
 import { parseBRL } from '../lib/money.js'
 import { pickable } from '../lib/categories.js'
 import { todayISO, monthOf, daysInMonth, dueDate } from '../lib/month.js'
@@ -37,6 +38,15 @@ const billMonth = start.fixed_bill_id ? start.bill_month : null
 const dateMin = billMonth
 const dateMax = billMonth && dueDate(billMonth, daysInMonth(billMonth))
 
+// My card (private tag): only when the money left my pocket, i.e. personal, paid by me or split at the till.
+const cards = computed(() => state.cards.filter((c) => !c.archived || c.id === card.value))
+const card = ref('')
+if (props.expense) getExpenseCard(props.expense.id).then((id) => (card.value = id)).catch(() => {})
+const showCard = computed(() => cards.value.length && (scope.value === 'personal' || paidBy.value === myId || paidBy.value === null))
+// Installments: personal purchases only, set on creation (one row per month).
+const installments = ref(1)
+const group = props.expense?.installment_group
+
 const error = ref('')
 const busy = ref(false)
 
@@ -59,9 +69,22 @@ async function submit() {
     paid_by: house ? paidBy.value : myId,
     share_pct: house && useOverride.value ? { [first.user_id]: pct, [second.user_id]: 100 - pct } : null, // null = DB uses the default
   }
+  const n = house || props.expense ? 1 : Number(installments.value)
+  if (!(Number.isInteger(n) && n >= 1 && n <= 48)) return (error.value = 'Parcelas entre 1 e 48.')
   busy.value = true
   try {
-    const saved = props.expense ? await updateExpense(props.expense.id, row) : await addExpense(row)
+    let saved, ids
+    if (props.expense) {
+      saved = await updateExpense(props.expense.id, row)
+      ids = group ? await updateInstallmentGroup(group, { description: row.description, category_id: row.category_id }) : [saved.id]
+    } else if (n > 1) {
+      const installment_group = crypto.randomUUID()
+      const rows = splitInstallments(amount_cents, n).map((cents, k) => ({
+        ...row, amount_cents: cents, spent_on: installmentDate(row.spent_on, k), installment_group, installment_no: k + 1, installment_count: n,
+      }))
+      ids = (saved = await addExpenses(rows)).map((r) => r.id)
+    } else ids = [(saved = await addExpense(row)).id]
+    if (card.value || props.expense) await setExpenseCard(ids, showCard.value ? card.value : null)
     emit('saved', saved)
   } catch (e) {
     error.value = e.message
@@ -111,6 +134,21 @@ const chip = (on) =>
         <option v-for="c in categoryOptions" :key="c.id" :value="c.id">{{ c.name }}{{ c.archived ? ' (arquivada)' : '' }}</option>
       </select>
     </label>
+
+    <div v-if="showCard || (scope === 'personal' && !expense)" class="grid grid-cols-2 gap-space-sm">
+      <label v-if="showCard" class="flex flex-col gap-1" :class="{ 'col-span-2': scope !== 'personal' || expense }">
+        <span :class="label">{{ scope === 'house' && paidBy === null ? 'Seu cartão' : 'Cartão' }}</span>
+        <select v-model="card" :class="input">
+          <option value="">Nenhum</option>
+          <option v-for="c in cards" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+      </label>
+      <label v-if="scope === 'personal' && !expense" class="flex flex-col gap-1" :class="{ 'col-span-2': !showCard }">
+        <span :class="label">Parcelas</span>
+        <input v-model="installments" type="number" min="1" max="48" required :class="input" />
+      </label>
+    </div>
+    <p v-if="group" class="text-body-sm text-on-surface-variant">Parcela {{ expense.installment_no }}/{{ expense.installment_count }}: descrição, categoria e cartão mudam em todas; valor e data só nesta.</p>
 
     <p v-if="scope === 'personal'" class="flex items-start gap-2 rounded-lg bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
       <span class="material-symbols-outlined text-[18px] text-primary">lock</span>

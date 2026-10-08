@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { state, me, listExpenses, listIncomes, listRecurringIncomes, listInvestments, listMoves, listBudgets } from '../lib/store.js'
+import { state, me, listExpenses, listIncomes, listRecurringIncomes, listInvestments, listMoves, listBudgets, listExpenseCards } from '../lib/store.js'
 import { addMonths, nextMonth, monthLabel } from '../lib/month.js'
 import { monthMetrics, monthlySeries, budgetUsage, portfolio } from '../lib/personal.js'
 import SummaryTab from '../components/Individual/SummaryTab.vue'
@@ -40,10 +40,11 @@ async function load() {
   try {
     // 12 months back from the chosen month feed the charts; moves need the whole history for balances.
     const range = { start: addMonths(month, -11), end: nextMonth(month) }
-    const [expenses, incomes, recurring, investments, moves, budgets] = await Promise.all([
-      listExpenses(range), listIncomes(range), listRecurringIncomes(), listInvestments(), listMoves(), listBudgets(),
+    // Expenses one month further: next month's card invoice already holds purchases and installments from it.
+    const [expenses, incomes, recurring, investments, moves, budgets, expenseCards] = await Promise.all([
+      listExpenses({ ...range, end: addMonths(month, 2) }), listIncomes(range), listRecurringIncomes(), listInvestments(), listMoves(), listBudgets(), listExpenseCards(),
     ])
-    if (id === req) data.value = { month, expenses, incomes, recurring, investments, moves, budgets }
+    if (id === req) data.value = { month, expenses, incomes, recurring, investments, moves, budgets, expenseCards }
   } catch (e) {
     if (id === req) error.value = e.message || 'Erro ao carregar.'
   } finally {

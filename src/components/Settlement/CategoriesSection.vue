@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { state, saveCategory, moveCategory } from '../../lib/store.js'
+import { state, saveCategory, moveCategory, swapCategories } from '../../lib/store.js'
 import { COLORS, ICONS, chipClass } from '../../lib/categories.js'
 import Modal from '../FixedBills/Modal.vue'
 
@@ -59,6 +59,7 @@ async function save() {
   }
 }
 
+const move = (i, d) => run(active.value[i].id, () => swapCategories(active.value[i], active.value[i + d]))
 const toggleArchive = (c) => run(c.id, () => saveCategory({ ...c, archived: !c.archived }))
 
 // ---- "Excluir" = archive (optionally moving the entries first). Never a real delete: that would only fail when
@@ -121,10 +122,12 @@ const primaryBtn = 'inline-flex items-center justify-center gap-2 bg-primary hov
 
     <p v-if="!active.length" class="text-body-md text-on-surface-variant">Nenhuma categoria ativa. Crie uma em <b class="text-on-surface">Nova categoria</b>.</p>
     <ul v-else data-tour="category-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-space-md">
-      <li v-for="c in active" :key="c.id" class="flex items-center gap-3 py-2 border-b border-surface-container min-w-0">
+      <li v-for="(c, i) in active" :key="c.id" class="flex items-center gap-3 py-2 border-b border-surface-container min-w-0">
         <span class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" :class="chipClass(c)"><span class="material-symbols-outlined text-[20px]">{{ c.icon }}</span></span>
         <span class="flex-1 min-w-0 truncate text-body-md text-on-surface">{{ c.name }}</span>
         <span data-tour="category-actions" class="flex items-center shrink-0">
+          <button type="button" :disabled="busyId === c.id || i === 0" :class="iconBtn" class="disabled:opacity-30" title="Subir" :aria-label="`Subir ${c.name}`" @click="move(i, -1)"><span class="material-symbols-outlined text-[20px]">arrow_upward</span></button>
+          <button type="button" :disabled="busyId === c.id || i === active.length - 1" :class="iconBtn" class="disabled:opacity-30" title="Descer" :aria-label="`Descer ${c.name}`" @click="move(i, 1)"><span class="material-symbols-outlined text-[20px]">arrow_downward</span></button>
           <button type="button" :disabled="busyId === c.id" :class="iconBtn" title="Editar" :aria-label="`Editar ${c.name}`" @click="openEdit(c)"><span class="material-symbols-outlined text-[20px]">edit</span></button>
           <button type="button" :disabled="busyId === c.id" :class="iconBtn" title="Arquivar" :aria-label="`Arquivar ${c.name}`" @click="toggleArchive(c)"><span class="material-symbols-outlined text-[20px]">archive</span></button>
           <button type="button" :disabled="busyId === c.id" :class="iconBtn" class="hover:!bg-error-container hover:!text-on-error-container" title="Excluir" :aria-label="`Excluir ${c.name}`" @click="remove(c)"><span class="material-symbols-outlined text-[20px]">delete</span></button>

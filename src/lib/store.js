@@ -9,6 +9,7 @@ export const state = reactive({
   household: null,
   members: [], // [{ user_id, household_id, name, default_share_pct }]
   categories: [], // household list, see lib/categories.js
+  cards: [], // my private credit cards (0010)
   month: currentMonth(), // 'YYYY-MM-01'
   version: 0, // bumped after every write
   form: { open: false, expense: null, defaults: {} }, // global ExpenseForm modal (rendered by AppLayout)
@@ -56,13 +57,14 @@ async function loadHousehold() {
     state.members = []
     state.household = null
     state.categories = []
+    state.cards = []
     return
   }
   const mine = must(await supabase.from('members').select('*').eq('user_id', state.session.user.id).maybeSingle())
   if (!mine) throw new Error('Usuário sem casa cadastrada. Rode o supabase/seed.sql.')
   state.members = must(await supabase.from('members').select('*').order('name'))
   state.household = must(await supabase.from('households').select('*').eq('id', mine.household_id).single())
-  await loadCategories()
+  await Promise.all([loadCategories(), loadCards()])
 }
 
 // ---- categories (shared by the household; lib/categories.js reads state.categories) ------------------------------
@@ -76,6 +78,21 @@ export async function saveCategory({ id, kind, name, icon, color, archived = fal
   else {
     const sort = Math.max(-1, ...state.categories.filter((c) => c.kind === kind).map((c) => c.sort)) + 1
     must(await supabase.from('categories').insert({ kind, name, icon, color, sort }))
+  }
+  await loadCategories()
+  changed()
+}
+
+// Swaps the sort of two categories of the same kind (the ↑/↓ buttons). Renumbers first: old rows may share a sort.
+export async function swapCategories(a, b) {
+  const list = state.categories.filter((c) => c.kind === a.kind)
+  const ids = list.map((c) => c.id)
+  const i = ids.indexOf(a.id)
+  const j = ids.indexOf(b.id)
+  ;[ids[i], ids[j]] = [ids[j], ids[i]]
+  for (const c of list) {
+    const sort = ids.indexOf(c.id)
+    if (c.sort !== sort) must(await supabase.from('categories').update({ sort }).eq('id', c.id))
   }
   await loadCategories()
   changed()
@@ -154,6 +171,56 @@ export async function updateExpense(id, patch) {
 
 export async function deleteExpense(id) {
   changed(must(await supabase.from('expenses').delete().eq('id', id)))
+}
+
+// ---- parcelas + cartões (0010; cards and tags are private to me) ------------------------------------------------
+export async function addExpenses(rows) {
+  return changed(must(await supabase.from('expenses').insert(rows.map((r) => ({ ...r, household_id: hh() }))).select()))
+}
+
+// Description/category apply to every installment of the purchase.
+// Returns the group's expense ids.
+export async function updateInstallmentGroup(group, patch) {
+  return changed(must(await supabase.from('expenses').update(patch).eq('installment_group', group).select('id'))).map((r) => r.id)
+}
+
+export async function deleteInstallmentGroup(group) {
+  changed(must(await supabase.from('expenses').delete().eq('installment_group', group)))
+}
+
+export async function loadCards() {
+  state.cards = state.session ? must(await supabase.from('cards').select('*').order('archived').order('name')) : []
+}
+
+// card = { id?, name, closing_day, archived? }
+export async function upsertCard(card) {
+  must(await supabase.from('cards').upsert(card))
+  await loadCards()
+  changed()
+}
+
+// Removes the card and its tags; the expenses stay.
+export async function deleteCard(id) {
+  must(await supabase.from('cards').delete().eq('id', id))
+  await loadCards()
+  changed()
+}
+
+// My tags: [{ expense_id, card_id }]. Personal use only, small.
+export async function listExpenseCards() {
+  return all(() => supabase.from('expense_cards').select('expense_id, card_id').order('expense_id'))
+}
+
+export async function getExpenseCard(expenseId) {
+  return must(await supabase.from('expense_cards').select('card_id').eq('expense_id', expenseId).maybeSingle())?.card_id || ''
+}
+
+// Tags expenseIds with my card (cardId null = untag).
+export async function setExpenseCard(expenseIds, cardId) {
+  const uid = state.session.user.id
+  must(await supabase.from('expense_cards').delete().eq('user_id', uid).in('expense_id', expenseIds))
+  if (cardId) must(await supabase.from('expense_cards').insert(expenseIds.map((expense_id) => ({ expense_id, card_id: cardId }))))
+  changed()
 }
 
 // ---- fixed bills -----------------------------------------------------------
