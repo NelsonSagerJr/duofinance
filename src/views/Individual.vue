@@ -40,9 +40,9 @@ async function load() {
   try {
     // 12 months back from the chosen month feed the charts; moves need the whole history for balances.
     const range = { start: addMonths(month, -11), end: nextMonth(month) }
-    // Expenses one month further: next month's card invoice already holds purchases and installments from it.
+    // Expenses 12 months further: next month's card invoice holds purchases from it, and the Resumo lists installments already committed ahead.
     const [expenses, incomes, recurring, investments, moves, budgets, expenseCards] = await Promise.all([
-      listExpenses({ ...range, end: addMonths(month, 2) }), listIncomes(range), listRecurringIncomes(), listInvestments(), listMoves(), listBudgets(), listExpenseCards(),
+      listExpenses({ ...range, end: addMonths(month, 13) }), listIncomes(range), listRecurringIncomes(), listInvestments(), listMoves(), listBudgets(), listExpenseCards(),
     ])
     if (id === req) data.value = { month, expenses, incomes, recurring, investments, moves, budgets, expenseCards }
   } catch (e) {
