@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue'
-import { openExpenseForm, deleteExpense, paidByLabel } from '../../lib/store.js'
+import { state, openExpenseForm, deleteExpense, deleteInstallmentGroup, paidByLabel } from '../../lib/store.js'
+import { installmentLabel } from '../../lib/cards.js'
+import CardsSection from './CardsSection.vue'
 import { formatBRL } from '../../lib/money.js'
 import { categoryById, chipClass } from '../../lib/categories.js'
 import { monthLabel, monthRange } from '../../lib/month.js'
@@ -24,13 +26,20 @@ const house = computed(() =>
   monthRows.value.filter((e) => e.scope === 'house').map((e) => ({ ...e, share: myHouseShare(e, props.view.members, props.view.meId) })),
 )
 
+const cardOf = computed(() => {
+  const names = new Map(state.cards.map((c) => [c.id, c.name]))
+  return new Map(props.view.expenseCards.map((t) => [t.expense_id, names.get(t.card_id)]))
+})
+
 const dayFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
 const shortDate = (d) => dayFmt.format(new Date(d + 'T00:00:00Z')).replace('.', '')
 
 async function remove(e) {
-  if (!confirm(`Excluir "${e.description}" (${formatBRL(e.amount_cents)})?`)) return
+  const group = e.installment_group
+  const msg = group ? `Excluir "${e.description}" e todas as ${e.installment_count} parcelas?` : `Excluir "${e.description}" (${formatBRL(e.amount_cents)})?`
+  if (!confirm(msg)) return
   try {
-    await deleteExpense(e.id)
+    await (group ? deleteInstallmentGroup(group) : deleteExpense(e.id))
   } catch (err) {
     alert('Não foi possível excluir: ' + (err.message || err))
   }
@@ -65,6 +74,8 @@ async function remove(e) {
     </div>
   </div>
 
+  <CardsSection :view="view" />
+
   <div data-tour="personal-extrato" class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col gap-space-md">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
       <div>
@@ -87,10 +98,11 @@ async function remove(e) {
             <span class="material-symbols-outlined text-[20px]">{{ categoryById(e.category_id).icon }}</span>
           </div>
           <div class="flex flex-col min-w-0">
-            <span class="font-body-md text-body-md text-on-surface font-semibold truncate">{{ e.description }}</span>
+            <span class="font-body-md text-body-md text-on-surface font-semibold truncate">{{ e.description }}{{ installmentLabel(e) }}</span>
             <div class="flex flex-wrap items-center gap-x-2 font-label-sm text-label-sm text-on-surface-variant">
               <span class="whitespace-nowrap">{{ shortDate(e.spent_on) }}</span><span>•</span>
               <span class="px-1.5 bg-surface-container rounded whitespace-nowrap">{{ categoryById(e.category_id).name }}</span>
+              <span v-if="cardOf.get(e.id)" class="inline-flex items-center gap-0.5 whitespace-nowrap"><span class="material-symbols-outlined text-[14px]">credit_card</span>{{ cardOf.get(e.id) }}</span>
             </div>
           </div>
         </div>
@@ -120,7 +132,7 @@ async function remove(e) {
       <li v-for="e in house" :key="e.id" class="flex items-center justify-between gap-2 py-3 px-2">
         <div class="flex flex-col min-w-0">
           <span class="font-body-md text-body-md text-on-surface truncate">{{ e.description }}</span>
-          <span class="font-label-sm text-label-sm text-on-surface-variant">{{ shortDate(e.spent_on) }} · {{ categoryById(e.category_id).name }} · {{ e.paid_by ? `pago por ${paidByLabel(e.paid_by)}` : paidByLabel(null) }}</span>
+          <span class="font-label-sm text-label-sm text-on-surface-variant">{{ shortDate(e.spent_on) }} · {{ categoryById(e.category_id).name }}{{ cardOf.get(e.id) ? ` · ${cardOf.get(e.id)}` : '' }} · {{ e.paid_by ? `pago por ${paidByLabel(e.paid_by)}` : paidByLabel(null) }}</span>
         </div>
         <div class="text-right shrink-0">
           <div class="font-label-lg text-label-lg text-on-surface whitespace-nowrap">{{ formatBRL(e.share) }}</div>
