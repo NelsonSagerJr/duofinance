@@ -28,7 +28,7 @@ const house = computed(() =>
 
 const cardOf = computed(() => {
   const names = new Map(state.cards.map((c) => [c.id, c.name]))
-  return new Map(props.view.expenseCards.map((t) => [t.expense_id, names.get(t.card_id)]))
+  return new Map(props.view.expenseCards.filter((t) => t.user_id === props.view.meId).map((t) => [t.expense_id, names.get(t.card_id)]))
 })
 
 const dayFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })
