@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { state, me, upsertCard, deleteCard } from '../../lib/store.js'
 import { formatBRL } from '../../lib/money.js'
 import { addMonths, dueDate } from '../../lib/month.js'
-import { invoiceMonth, cardAmount } from '../../lib/cards.js'
+import { invoiceMonth, cardAmount, installmentLabel } from '../../lib/cards.js'
 import { myHouseShare } from '../../lib/personal.js'
 import Modal from '../FixedBills/Modal.vue'
 
@@ -15,13 +15,20 @@ const cards = computed(() => {
   const tag = new Map(expenseCards.filter((t) => t.user_id === meId).map((t) => [t.expense_id, t.card_id]))
   const months = [month, addMonths(month, 1)]
   return state.cards.filter((c) => c.user_id === me.value?.user_id && !c.archived).map((c) => {
-    const totals = [0, 0]
+    const items = [[], []]
     for (const e of expenses) {
       if (tag.get(e.id) !== c.id) continue
       const k = months.indexOf(invoiceMonth(e.spent_on, c.closing_day))
-      if (k >= 0) totals[k] += cardAmount(e, myHouseShare(e, members, meId))
+      if (k >= 0) items[k].push({ id: e.id, date: e.spent_on, label: e.description + installmentLabel(e), cents: cardAmount(e, myHouseShare(e, members, meId)) })
     }
-    return { ...c, invoices: months.map((m, k) => ({ closes: dueDate(m, c.closing_day), cents: totals[k] })) }
+    return {
+      ...c,
+      invoices: months.map((m, k) => ({
+        closes: dueDate(m, c.closing_day),
+        cents: items[k].reduce((s, i) => s + i.cents, 0),
+        items: items[k].sort((a, b) => a.date.localeCompare(b.date)), // oldest first, like the bank's CSV
+      })),
+    }
   })
 })
 const dm = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
@@ -80,10 +87,23 @@ const iconBtn = 'w-8 h-8 flex items-center justify-center rounded-lg text-on-sur
           <button type="button" :class="iconBtn" :aria-label="`Excluir ${c.name}`" title="Excluir" @click="remove(c)"><span class="material-symbols-outlined text-[18px]">delete</span></button>
         </div>
         <div class="grid grid-cols-2 gap-space-sm">
-          <div v-for="(inv, k) in c.invoices" :key="inv.closes" class="flex flex-col">
-            <span class="font-label-sm text-label-sm text-on-surface-variant">Fecha {{ dm(inv.closes) }}{{ k ? ' · aberta' : '' }}</span>
-            <span class="font-label-lg text-label-lg text-on-surface">{{ formatBRL(inv.cents) }}</span>
-          </div>
+          <details v-for="(inv, k) in c.invoices" :key="inv.closes" class="group min-w-0 open:col-span-2 open:order-last">
+            <summary class="flex flex-col cursor-pointer list-none rounded-lg -m-1 p-1 hover:bg-surface-container-high">
+              <span class="font-label-sm text-label-sm text-on-surface-variant inline-flex items-center gap-0.5">
+                Fecha {{ dm(inv.closes) }}{{ k ? ' · aberta' : '' }}
+                <span class="material-symbols-outlined text-[16px] transition-transform group-open:rotate-180">expand_more</span>
+              </span>
+              <span class="font-label-lg text-label-lg text-on-surface">{{ formatBRL(inv.cents) }}</span>
+            </summary>
+            <p v-if="!inv.items.length" class="mt-2 text-body-sm text-on-surface-variant">Nenhum lançamento.</p>
+            <ul v-else class="mt-2 flex flex-col divide-y divide-surface-container">
+              <li v-for="i in inv.items" :key="i.id" class="flex items-baseline gap-2 py-1.5 text-body-sm">
+                <span class="text-on-surface-variant whitespace-nowrap">{{ dm(i.date) }}</span>
+                <span class="flex-1 min-w-0 truncate text-on-surface">{{ i.label }}</span>
+                <span class="whitespace-nowrap text-on-surface">{{ formatBRL(i.cents) }}</span>
+              </li>
+            </ul>
+          </details>
         </div>
       </li>
     </ul>
