@@ -177,3 +177,21 @@
   cursor: pointer !important; flex-shrink: 0; padding: 6px 12px; border-radius: 8px; font-weight: 600;
   background: rgb(var(--c-inverse-primary)); color: rgb(var(--c-inverse-surface));
 }
+
+/* Insight cards (Visão geral, Meu Espaço · Resumo): soft glassy surface with a faint tinted glow, both themes. */
+@layer components {
+  .glass {
+    @apply rounded-2xl p-space-md md:p-space-lg flex flex-col gap-space-md min-w-0 border border-outline-variant/40;
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgb(var(--c-chart-worth) / var(--glow-a)), transparent 60%),
+      rgb(var(--c-surface-container-lowest) / 0.85);
+    box-shadow: 0 1px 0 rgb(255 255 255 / var(--glass-hi)) inset, 0 18px 40px -24px rgb(0 0 0 / var(--glass-sh));
+    backdrop-filter: blur(16px);
+  }
+  .glass-accent { background: linear-gradient(135deg, rgb(var(--c-chart-worth) / 0.16), rgb(var(--c-chart-net) / 0.12)), rgb(var(--c-surface-container-lowest)); }
+  .eyebrow { @apply font-label-sm text-label-sm uppercase tracking-[0.08em] text-on-surface-variant; }
+  .big-num { @apply font-headline-xl text-[34px] sm:text-[42px] leading-tight font-bold tracking-tight tabular-nums text-on-surface; }
+}
+:root { --glow-a: 0.06; --glass-hi: 0.6; --glass-sh: 0.18; }
+.dark { --glow-a: 0.12; --glass-hi: 0.05; --glass-sh: 0.6; }
+.glow { filter: drop-shadow(0 0 5px rgb(var(--c-chart-worth) / 0.55)); }

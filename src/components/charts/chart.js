@@ -40,3 +40,17 @@ const monthLong = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numer
 // '2026-09-01' -> 'set' / 'setembro de 2026'
 export const shortMonth = (m) => monthShort.format(new Date(m + 'T00:00:00Z')).replace('.', '')
 export const longMonth = (m) => monthLong.format(new Date(m + 'T00:00:00Z'))
+
+// Smooth path through [[x, y], ...] (Catmull-Rom as cubic Béziers).
+export function smooth(p) {
+  if (!p.length) return ''
+  let d = `M${p[0][0]},${p[0][1]}`
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`
+  }
+  return d
+}
+
+// Ring arc: stroke-dasharray for a fraction (0..1) of a circle of radius r.
+export const arc = (r, f) => `${2 * Math.PI * r * Math.max(0, Math.min(1, f))} ${2 * Math.PI * r}`
